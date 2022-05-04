@@ -1,0 +1,17 @@
+Metadata-Version: 2.1
+Name: simple-fpa
+Version: 0.1.4
+Summary: Simple nonparametric inference for sealed first-price auctions.
+Home-page: UNKNOWN
+Author: Pasha Andreyanov, Grigory Franguridi
+Author-email: pandreyanov@gmail.com
+License: MIT
+Platform: UNKNOWN
+Classifier: License :: OSI Approved :: MIT License
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+A package for the "Nonparametric inference on counterfactuals in sealed first-price auctions" paper by Pasha Andreyanov and Grigory Franguridy.
+
+It contains a class that fits the auction data using a symmetric first-price auction model with either additive or multiplicative heterogeneity, and predicts latent valuations.
+
