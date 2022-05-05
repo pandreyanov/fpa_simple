@@ -21,5 +21,5 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License"
     ],
-    install_requires=['numpy','scipy','numba','pandas']
+    install_requires=['numpy','scipy','pandas']
 )

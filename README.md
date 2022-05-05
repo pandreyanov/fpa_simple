@@ -28,3 +28,18 @@ model.predict()
 
 model.plot_stats()
 ```
+
+### Predictions
+
+The counterfactuals are populated into the original dataset, ordered by the magnitude of bid redisuals. Some observations will not have a prediction, as they will be ignored (trimmed) in the non-parametric estimation.
+
+- *_resid* : bid residuals
+- *_fitted* : bid fitted values
+- *_trimmed* : variable takes 1 if observations were omitted (trimmed) and 0 otherwise
+- *_u* : u-quantile levels, takes values between 0 and 1
+- *_hat_q* : estimate of quantile density of bid residuals
+- *_hat_v* : estimate of quantile function of value residuals
+- *_latent_resid* : same as *_hat_v*
+- *_ts* : total surplus as function of exclusion level u
+- *_bs* : potential bidder surplus as function of exclusion level u
+- *_rev* : auctioneer revenue as function of exclusion level u
