@@ -24,15 +24,16 @@ def q_smooth(sorted_bids, kernel, sample_size, band, i_band, trim, is_sorted = F
     
     return out
 
-@nb.jit(nopython = True)
-def binning(bids, sample_size):
-    histogram = np.zeros(sample_size)
-    for k in range(sample_size):
-        histogram[int(sample_size*bids[k])] += 1
-    return histogram
+# @nb.jit(nopython = True)
+# def binning(bids, sample_size):
+#     histogram = np.zeros(sample_size)
+#     for k in range(sample_size):
+#         histogram[int(sample_size*bids[k])] += 1
+#     return histogram
 
 def f_smooth(bids, kernel, sample_size, band, i_band, trim, paste_ends = False, reflect = False):
-    histogram = binning(bids, sample_size)
+    histogram, _ = np.histogram(bids, sample_size, range = (0,1))
+    #histogram = binning(bids, sample_size)
     
     if reflect == False:
         mean = histogram.mean()

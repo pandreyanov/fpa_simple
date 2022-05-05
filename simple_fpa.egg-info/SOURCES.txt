@@ -2,9 +2,11 @@ LICENSE
 README.md
 setup.py
 simple_fpa/__init__.py
+simple_fpa/calibrate.py
 simple_fpa/estimators.py
 simple_fpa/kernels.py
 simple_fpa/model.py
+simple_fpa/plots.py
 simple_fpa.egg-info/PKG-INFO
 simple_fpa.egg-info/SOURCES.txt
 simple_fpa.egg-info/dependency_links.txt
