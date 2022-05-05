@@ -1,5 +1,4 @@
 ### A package for the "Nonparametric inference on counterfactuals in sealed first-price auctions" paper by Pasha Andreyanov and Grigory Franguridy.
-
 It contains a class that fits the auction data using a symmetric first-price auction model with either additive or multiplicative heterogeneity, and predicts latent valuations and counterfactuals.
 
 The interface of the package consists of 4 steps.
@@ -8,6 +7,11 @@ The interface of the package consists of 4 steps.
 - pass covariate (continuous and discrete) column names and create bid residuals and fitted values
 - fit the non-parametric model
 - predict latent bids, and also expected total surplus, potential bidder surplus and revenue, as functions of exclusion level
+
+### Arxiv and Github repository
+https://arxiv.org/abs/2106.13856
+
+https://github.com/pandreyanov/pashas_simple_fpa
 
 ### Sample code
 
