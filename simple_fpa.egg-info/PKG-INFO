@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: simple-fpa
-Version: 0.1.9
+Version: 0.2
 Summary: Simple nonparametric inference for sealed first-price auctions.
 Home-page: UNKNOWN
 Author: Pasha Andreyanov, Grigory Franguridi
