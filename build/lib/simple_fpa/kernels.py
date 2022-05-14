@@ -10,5 +10,5 @@ def epa(u):
 def rec(u):
     return (np.sign(1/2 - np.abs(u)) + 1)/2
 
-def make_kernel(i_band, kernel = tri):
-    return np.array([kernel(j/i_band)/i_band for j in range(-i_band+1, i_band)])
+def make_kernel(u_grid, i_band, kernel = tri):
+    return np.array([kernel(j/i_band)/i_band for j in range(-i_band+1, i_band)]), 2*np.square(kernel(u_grid)).mean()

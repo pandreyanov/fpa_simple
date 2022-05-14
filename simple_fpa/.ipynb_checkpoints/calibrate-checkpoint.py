@@ -32,6 +32,7 @@ def calibrate_part(model, u_grid, frec):
         A_1_prime += pm*(m-1)*np.power(u_grid, m-2)
         a += m*pm/M
 
+    A_1[1] = A_1[0] # avoid division by zero
     A_1_prime[1] = A_1_prime[0] # avoid division by zero
 
     A_2 = u_grid*A_1

@@ -42,3 +42,23 @@ def f_smooth(bids, kernel, sample_size, band, i_band, trim, paste_ends = False, 
 
 def v_smooth(hat_Q, hat_q, A_4):
     return hat_Q + A_4*hat_q
+
+def d(arr):
+    diff = arr - np.roll(arr, 1)
+    diff[0] = diff[1]
+    return diff*len(diff)
+    
+def int_lowbound(arr):
+    return np.flip(np.cumsum(np.flip(arr)))/len(arr)
+
+def int_uppbound(arr):
+    return np.cumsum(arr)/len(arr)
+
+def total_surplus(v, M, A_1, A_2, A_3, A_4, a):
+    return int_lowbound(v*d(A_2))
+
+def bidder_surplus(v, M, A_1, A_2, A_3, A_4, a):
+    return a*int_lowbound(A_3*d(v))
+
+def revenue(v, M, A_1, A_2, A_3, A_4, a):
+    return total_surplus(v, M, A_1, A_2, A_3, A_4, a) - M*bidder_surplus(v, M, A_1, A_2, A_3, A_4, a)

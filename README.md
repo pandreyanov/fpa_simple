@@ -31,6 +31,8 @@ model.fit(smoothing_rate = 0.2, trim_percent = 5, reflect = True)
 model.predict()
 
 model.plot_stats()
+model.plot_counterfactuals()
+model.data.sample(5)
 ```
 
 ### Predictions
