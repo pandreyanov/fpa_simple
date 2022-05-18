@@ -9,17 +9,39 @@ def plot_counterfactuals(self):
     rcParams['figure.figsize'] = 7, 7/3
     fig, (ax1, ax2) = plt.subplots(1,2, sharey = True)
     
-    ax1.plot(self.u_grid, self.ts, label = 'total surplus')
-    ax1.plot(self.u_grid, self.M*self.bs, label = '(all) potential\\ bidders\' surplus')
-    ax1.plot(self.u_grid, self.rev, label = 'revenue')
+    ax1.plot(self.u_grid, self.ts, label = 'TS', color = 'green')
+    
+    ax1.plot(self.u_grid, self.M*self.bs, label = 'M*BS', 
+             color = 'red', linewidth=1)
+    ax1.plot(self.data._u, self.M*(self.data._bs_ci+self.data._hat_bs), 
+             color = 'red', linestyle = '--', linewidth = 1)
+    ax1.plot(self.data._u, self.M*(-self.data._bs_ci+self.data._hat_bs), 
+             color = 'red', linestyle = '--', linewidth = 1)
+    
+    ax1.plot(self.u_grid, self.rev, label = 'REV', color = 'blue')
+    ax1.plot(self.data._u, self.data._rev_ci + self.data._hat_rev, 
+             color = 'blue', linestyle = '--',linewidth = 1)
+    ax1.plot(self.data._u, -self.data._rev_ci + self.data._hat_rev, 
+             color = 'blue', linestyle = '--',linewidth = 1)
     
     ax1.legend(loc = 'upper right')
     #ax1.set_ylabel('in terms of residuals')
     ax1.set_xlabel('confidence intervals')
     
     ax2.plot(self.u_grid, self.ts)
-    ax2.plot(self.u_grid, self.M*self.bs)
-    ax2.plot(self.u_grid, self.rev)
+    
+    ax2.plot(self.u_grid, self.M*self.bs, color = 'red', linewidth=1)
+    ax2.plot(self.data._u, self.M*(self.data._bs_cb+self.data._hat_bs), 
+             color = 'red', linestyle = '--',linewidth = 1)
+    ax2.plot(self.data._u, self.M*(-self.data._bs_cb+self.data._hat_bs), 
+             color = 'red', linestyle = '--',linewidth = 1)
+    
+    ax2.plot(self.u_grid, self.rev, color = 'blue')
+    ax2.plot(self.data._u, self.data._rev_cb + self.data._hat_rev, 
+             color = 'blue', linestyle = '--',linewidth = 1)
+    ax2.plot(self.data._u, -self.data._rev_cb + self.data._hat_rev, 
+             color = 'blue', linestyle = '--',linewidth = 1)
+    
     ax2.set_xlabel('confidence bands')
     
     plt.tight_layout()
@@ -51,6 +73,7 @@ def plot_stats(self):
     ax3.plot(self.u_grid, self.A_2, label = '$A_2$')
     ax3.plot(self.u_grid, self.A_3, label = '$A_3$')
     ax3.plot(self.u_grid, self.A_4, label = '$A_4$')
+    ax3.set_xlabel('auxilliary functions')
     ax3.legend()
         
     ciq = self.ci_two*self.hat_q/np.sqrt(self.sample_size*self.band)
@@ -92,8 +115,8 @@ def plot_stats(self):
         b_qf = self.hat_Q + avg_fitted
         v_qf = self.hat_v + avg_fitted
 
-    ax5.plot(self.u_grid, b_qf, label = 'avg bid q.f.')
-    ax5.plot(self.u_grid, v_qf, label = 'avg value q.f.')
+    ax5.plot(self.u_grid, b_qf, label = 'bid quantile function')
+    ax5.plot(self.u_grid, v_qf, label = 'value quantile function')
     ax5.legend()
     
     sb.histplot(data = self.data._latent_resid, 
