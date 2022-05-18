@@ -104,6 +104,7 @@ class Model:
         
         self.hat_f = f_smooth(self.observations, self.kernel, *self.band_options, 
                               paste_ends = False, reflect = reflect)/self.scale # might be unnecessary
+        
         self.hat_q = self.scale*q_smooth(self.observations, self.kernel, *self.band_options, 
                                          is_sorted = True, reflect = reflect)
         
@@ -127,14 +128,14 @@ class Model:
         self.data.loc[self.active_index,'_hat_v'] = self.hat_v
         self.data.loc[self.active_index,'_latent_resid'] = self.hat_v
         
-        self.data['_ts'] = np.nan
-        self.data.loc[self.active_index,'_ts'] = self.ts
+        self.data['_hat_ts'] = np.nan
+        self.data.loc[self.active_index,'_hat_ts'] = self.ts
         
-        self.data['_bs'] = np.nan
-        self.data.loc[self.active_index,'_bs'] = self.bs
+        self.data['_hat_bs'] = np.nan
+        self.data.loc[self.active_index,'_hat_bs'] = self.bs
         
-        self.data['_rev'] = np.nan
-        self.data.loc[self.active_index,'_rev'] = self.rev
+        self.data['_hat_rev'] = np.nan
+        self.data.loc[self.active_index,'_hat_rev'] = self.rev
         
         self.data['_latent_'+self.bid_column] = np.nan
         if self.model_type == 'multiplicative':
@@ -148,11 +149,11 @@ class Model:
     def plot_counterfactuals(self):
         plot_counterfactuals(self)
         
-    def make_ci(self, confidence):
-        make_ci(self, confidence)
+    def make_ci(self, confidence, hyp = 'twosided'):
+        make_ci(self, confidence, hyp)
     
-    def make_cb(self, confidence, draws = 100):
-        make_cb(self, confidence, draws)
+    def make_cb(self, confidence, draws = 10000, hyp = 'twosided'):
+        make_cb(self, confidence, draws, hyp)
         
         
         
