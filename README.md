@@ -30,8 +30,10 @@ model.trim_residuals(5)
 model.fit(smoothing_rate = 0.2, trim_percent = 5, reflect = True)
 model.predict()
 
+model.make_ci(95)
 model.plot_stats()
 model.plot_counterfactuals()
+
 model.data.sample(5)
 ```
 

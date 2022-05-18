@@ -7,7 +7,7 @@ from pylab import rcParams
 
 def plot_counterfactuals(self):
     rcParams['figure.figsize'] = 7, 7/3
-    fig, (ax1, ax2) = plt.subplots(1,2)
+    fig, (ax1) = plt.subplots(1,1)
     
     ax1.plot(self.u_grid, self.ts, label = 'total surplus')
     ax1.plot(self.u_grid, self.M*self.bs, label = 'bidders surplus (times M)')
@@ -40,7 +40,14 @@ def plot_stats(self):
     
     ax2.set_xlabel('bid residuals')
     ax2.set_ylabel('density')
-    ax2.legend()
+    
+    # ax2.plot(self.intercept+self.scale*self.u_grid, 
+    #          self.hat_f, 
+    #          color = 'red', 
+    #          label = 'smooth $\hat f(b)$', 
+    #          linewidth=1)
+    
+    #ax2.legend()
     
     ax3.plot(self.u_grid, self.A_1, label = '$A_1$')
     ax3.plot(self.u_grid, self.A_2, label = '$A_2$')
@@ -48,24 +55,30 @@ def plot_stats(self):
     ax3.plot(self.u_grid, self.A_4, label = '$A_4$')
     ax3.legend()
         
-    ax4.plot(self.u_grid, self.hat_q, label = 'smooth $\hat q(u)$', linewidth = 1, color = 'blue')
-    ax4.plot(self.u_grid, self.hat_q*(1+self.ci_two), linestyle = '--', linewidth = 1, color = 'blue')
-    ax4.plot(self.u_grid, self.hat_q*(1-self.ci_two), linestyle = '--', linewidth = 1, color = 'blue')
+    ciq = self.ci_two*self.hat_q/np.sqrt(self.sample_size*self.band)
+    
+    ax4.plot(self.u_grid, 
+             self.hat_q, 
+             label = 'smooth $\hat q(u)$', linewidth = 1, color = 'blue')
+    ax4.plot(self.u_grid, self.hat_q+ciq, linestyle = '--', linewidth = 1, color = 'blue')
+    ax4.plot(self.u_grid, self.hat_q-ciq, linestyle = '--', linewidth = 1, color = 'blue')
     
     
     ax4.plot(self.u_grid, 
-             self.hat_f, 
+             self.hat_f*self.scale, 
              color = 'red', 
-             label = 'smooth $\hat f(b)$', 
+             label = 'smooth $\hat f(b)$ (scale matched)', 
              linewidth=1)
     
-    ax4.plot(self.u_grid*self.scale+self.intercept, 
-             self.hat_f+self.ci_two, 
+    cif = self.ci_two*np.sqrt(self.hat_f)/np.sqrt(self.sample_size*self.band)
+    
+    ax4.plot(self.u_grid, 
+             (self.hat_f+cif)*self.scale, 
              color = 'red', 
              linewidth=1, linestyle = '--')
     
-    ax4.plot(self.u_grid*self.scale+self.intercept, 
-             self.hat_f-self.ci_two, 
+    ax4.plot(self.u_grid, 
+             (self.hat_f-cif)*self.scale, 
              color = 'red', 
              linewidth=1, linestyle = '--')
     

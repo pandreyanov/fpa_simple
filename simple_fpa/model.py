@@ -9,6 +9,7 @@ from .kernels import *
 from .estimators import *
 from .plots import *
 from .calibrate import *
+from .inference import *
 
 class Model:
     '''A package for the "Nonparametric inference on counterfactuals in sealed first-price auctions" paper.'''
@@ -103,6 +104,7 @@ class Model:
         
         self.hat_f = f_smooth(self.observations, self.kernel, *self.band_options, 
                               paste_ends = False, reflect = reflect)/self.scale # might be unnecessary
+        
         self.hat_q = self.scale*q_smooth(self.observations, self.kernel, *self.band_options, 
                                          is_sorted = True, reflect = reflect)
         
@@ -111,10 +113,6 @@ class Model:
         self.ts = total_surplus(self.hat_v, *self.part_options)
         self.bs = bidder_surplus(self.hat_v, *self.part_options)
         self.rev = revenue(self.hat_v, *self.part_options)
-        
-        confidence = 99
-        two = norm.ppf((confidence+(100-confidence)/2)/100)
-        self.ci_two = np.sqrt(self.intKsq)*two/np.sqrt(self.sample_size*self.band)
         
     def predict(self):
         self.active_index = self.data._trimmed.isin([0])
@@ -150,6 +148,12 @@ class Model:
         
     def plot_counterfactuals(self):
         plot_counterfactuals(self)
+        
+    def make_ci(self, confidence):
+        make_ci(self, confidence)
+    
+    def make_cb(self, confidence, draws = 10000):
+        make_cb(self, confidence, draws)
         
         
         
