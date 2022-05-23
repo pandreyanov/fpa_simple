@@ -54,6 +54,10 @@ class Simulator:
         
     def make_true(self):
         
+        mc = np.sort(np.random.uniform(0, 1, self.sample_size))
+        hat_Q = self.Q_fun(mc)
+        self.hat_q_permanent = q_smooth(hat_Q, self.kernel, *self.band_options, is_sorted = True, reflect = self.reflect)
+        
         self.true_Q = self.Q_fun(self.u_grid)
         self.true_fQ = self.fQ_fun(self.u_grid)
         self.true_q = self.q_fun(self.u_grid)
@@ -70,15 +74,16 @@ class Simulator:
         self.true_fQ_uni = np.ones(self.sample_size)
         self.true_q_uni = np.ones(self.sample_size)
         
-        self.true_v_uni = v_smooth(self.true_Q_uni, self.true_q_uni, self.A_4)
-        self.true_v_uni *= self.true_q
-        self.true_Q_uni *= self.true_q
+        # here comes the pivotization
+        # for smooth functionals
+        self.true_Q_uni *= self.hat_q_permanent
+        # for non-smooth functionals
+        self.true_q_uni *= self.hat_q_permanent
         
-        self.true_ts_uni = total_surplus(self.true_v_uni, *self.part_options)
-        self.true_ts2_uni = total_surplus_from_Q(self.true_Q_uni, *self.part_options)
+        self.true_v_uni = v_smooth(self.true_Q_uni, self.true_q_uni, self.A_4)
+        self.true_ts_uni = total_surplus_from_Q(self.true_Q_uni, *self.part_options)
         self.true_bs_uni = bidder_surplus(self.true_v_uni, *self.part_options)
         self.true_rev_uni = self.true_ts_uni - self.M*self.true_bs_uni
-        self.true_rev2_uni = self.true_ts2_uni - self.M*self.true_bs_uni
         
     def simulate_uni(self, draws = 10000, nominal_coverage = 95): 
         
@@ -91,20 +96,20 @@ class Simulator:
             if smooth_Q == True:
                 hat_Q = np.cumsum(hat_q)/len(hat_q)
             
+            # here comes the pivotization
+            # for smooth functionals
+            hat_Q *= self.hat_q_permanent
+            # for non-smooth functionals
+            hat_q *= self.hat_q_permanent
+
+            
             hat_v = hat_Q + self.A_4*hat_q
-            hat_v *= self.true_q
-            hat_Q *= self.true_q
-            
             hat_bs = bidder_surplus(hat_v, *self.part_options)
-            hat_ts = total_surplus(hat_v, *self.part_options)
-            hat_ts2 = total_surplus_from_Q(hat_Q, *self.part_options)
+            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
             hat_rev = hat_ts - self.M*hat_bs
-            hat_rev2 = hat_ts2 - self.M*hat_bs
             
-            payload_1 = [hat_v, hat_bs, hat_rev, 
-                         hat_rev2, hat_ts, hat_ts2]
-            payload_2 = [self.true_v_uni, self.true_bs_uni, self.true_rev_uni, 
-                         self.true_rev2_uni, self.true_ts_uni,  self.true_ts2_uni]
+            payload_1 = [hat_q, hat_v, hat_bs, hat_rev, hat_ts]
+            payload_2 = [self.true_q_uni, self.true_v_uni, self.true_bs_uni, self.true_rev_uni, self.true_ts_uni]
             
             return [np.max((x-y)[self.trim:-self.trim]) for x,y in zip(payload_1,payload_2)]
             
@@ -127,17 +132,12 @@ class Simulator:
                 hat_Q = np.cumsum(hat_q)/len(hat_q)
             
             hat_v = hat_Q + self.A_4*hat_q
-            
             hat_bs = bidder_surplus(hat_v, *self.part_options)
-            hat_ts = total_surplus(hat_v, *self.part_options)
-            hat_ts2 = total_surplus_from_Q(hat_Q, *self.part_options)
+            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
             hat_rev = hat_ts - self.M*hat_bs
-            hat_rev2 = hat_ts2 - self.M*hat_bs
             
-            payload_1 = [hat_v, hat_bs, hat_rev, 
-                         hat_rev2, hat_ts, hat_ts2]
-            payload_2 = [self.true_v, self.true_bs, self.true_rev, 
-                         self.true_rev2, self.true_ts,  self.true_ts2]
+            payload_1 = [hat_q, hat_v, hat_bs, hat_rev, hat_ts]
+            payload_2 = [self.true_q, self.true_v, self.true_bs, self.true_rev, self.true_ts]
             
             return [np.max((x-y)[self.trim:-self.trim]) for x,y in zip(payload_1,payload_2)]
             
