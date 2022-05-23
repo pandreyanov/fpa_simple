@@ -9,26 +9,34 @@ def plot_counterfactuals(self):
     rcParams['figure.figsize'] = 7, 7/3
     fig, (ax1, ax2) = plt.subplots(1,2, sharey = True)
     
-    ax1.plot(self.u_grid, self.ts, label = 'TS', color = 'green')
+    ax1.plot(self.u_grid, self.ts, label = 'ts', color = 'green')
+    #ax1.plot(self.u_grid, self.ts2, color = 'yellow', linestyle = '--',linewidth = 1)
+    ax1.plot(self.u_grid, self.ts + self.ci_ts, color = 'green', linestyle = '--',linewidth = 1)
+    ax1.plot(self.u_grid, self.ts - self.ci_ts, color = 'green', linestyle = '--',linewidth = 1)
     
-    ax1.plot(self.u_grid, self.M*self.bs, label = 'M*BS', 
+    ax1.plot(self.u_grid, self.M*self.bs, label = 'M*bs', 
              color = 'red', linewidth=1)
     ax1.plot(self.data._u, self.M*(self.data._bs_ci+self.data._hat_bs), 
              color = 'red', linestyle = '--', linewidth = 1)
     ax1.plot(self.data._u, self.M*(-self.data._bs_ci+self.data._hat_bs), 
              color = 'red', linestyle = '--', linewidth = 1)
     
-    ax1.plot(self.u_grid, self.rev, label = 'REV', color = 'blue')
+    ax1.plot(self.u_grid, self.rev, label = 'rev', color = 'blue')
     ax1.plot(self.data._u, self.data._rev_ci + self.data._hat_rev, 
              color = 'blue', linestyle = '--',linewidth = 1)
     ax1.plot(self.data._u, -self.data._rev_ci + self.data._hat_rev, 
              color = 'blue', linestyle = '--',linewidth = 1)
     
+    ax1.axvline(self.opt_u, linewidth = 1, color = 'black', label = 'optimal exclusion', linestyle = 'dotted')
+    
     ax1.legend(loc = 'upper right')
     #ax1.set_ylabel('in terms of residuals')
     ax1.set_xlabel('confidence intervals')
     
-    ax2.plot(self.u_grid, self.ts)
+    ax2.plot(self.u_grid, self.ts, label = 'TS', color = 'green')
+    #ax2.plot(self.u_grid, self.ts2, color = 'yellow', linestyle = '--',linewidth = 1)
+    ax2.plot(self.u_grid, self.ts + self.cb_ts, color = 'green', linestyle = '--',linewidth = 1)
+    ax2.plot(self.u_grid, self.ts - self.cb_ts, color = 'green', linestyle = '--',linewidth = 1)
     
     ax2.plot(self.u_grid, self.M*self.bs, color = 'red', linewidth=1)
     ax2.plot(self.data._u, self.M*(self.data._bs_cb+self.data._hat_bs), 
@@ -41,6 +49,8 @@ def plot_counterfactuals(self):
              color = 'blue', linestyle = '--',linewidth = 1)
     ax2.plot(self.data._u, -self.data._rev_cb + self.data._hat_rev, 
              color = 'blue', linestyle = '--',linewidth = 1)
+    
+    ax2.axvline(self.opt_u, linewidth = 1, color = 'black', linestyle = 'dotted')
     
     ax2.set_xlabel('confidence bands')
     

@@ -10,7 +10,7 @@ README = (HERE / "README.md").read_text()
 # This call to setup() does all the work
 setup(
     name="simple_fpa",
-    version="0.7",
+    version="1.1.1",
     description="Simple nonparametric inference for sealed first-price auctions.",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -21,5 +21,7 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License"
     ],
-    install_requires=['numpy','scipy','pandas']
+    install_requires=['numpy','scipy','pandas'],
+    include_package_data=True,
+    package_data={'': ['data/*.csv']}
 )

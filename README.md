@@ -15,10 +15,10 @@ https://github.com/pandreyanov/pashas_simple_fpa
 
 ### Sample code
 
-Package can be installed via pip (exclamation ! means terminal command)
+Package can be installed via pip from terminal
 
 ```python
-!pip install simple_fpa
+pip install simple_fpa
 ```
 
 Import typical auction data
@@ -35,9 +35,8 @@ rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
     "font.serif": ["Arial"],
+    "figure.dpi": 200
 })
-
-rcParams['figure.dpi'] = 200
 
 df = pd.read_csv('../_data/haile_data_prepared.csv', index_col=0)
 ```
@@ -69,11 +68,19 @@ Make confidence intervals and confidence bands
 ```python
 model.make_ci(99, hyp = 'twosided')
 model.make_cb(99, draws = 1000, hyp = 'twosided')
+model.make_cicb_for_ts(99, draws = 1000, hyp = 'twosided')
 model.plot_stats()
+
+```
+
+Find optimal exclusion level and plot counterfactuals
+
+```python
+model.find_optimal_u()
 model.plot_counterfactuals()
 ```
 
-Look at the data
+Inspect the data
 
 ```python
 model.data.sample(5)
@@ -89,22 +96,13 @@ The counterfactuals are populated into the original dataset, ordered by the magn
 - *_u* : u-quantile levels, takes values between 0 and 1
 
 - *_hat_q* : estimate of quantile density of bid residuals
-- *_q_ci* : respective asymptotic confidence intervals
-- *_q_cb* : respective (asy. valid) simulated confidence bands
-
 - *_hat_v* : estimate of quantile function of value residuals
-- *_v_ci* : respective asymptotic confidence intervals
-- *_v_cb* : respective (asy. valid) simulated confidence bands
 
 - *_latent_resid* : same as *_hat_v*
 
 - *_hat_ts* : total surplus as function of exclusion level u
-
 - *_hat_bs* : (one) potential bidder surplus as function of exclusion level u
-- *_bs_ci* : respective asymptotic confidence intervals
-- *_bs_cb* : respective (asy. valid) simulated confidence bands
-
 - *_hat_rev* : auctioneer revenue as function of exclusion level u
-- *_rev_ci* : respective asymptotic confidence intervals
-- *_rev_cb* : respective (asy. valid) simulated confidence bands
 
+- *q_ci*, *v_ci*, *_bs_ci*, *_ts_ci*, *_rev_ci* : respective asymptotic confidence intervals
+- *q_cb*, *v_cb*, *_bs_cb*, *_ts_cb*, *_rev_cb* : respective asymptotic confidence bands

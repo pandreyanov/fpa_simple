@@ -62,3 +62,8 @@ def bidder_surplus(v, M, A_1, A_2, A_3, A_4, a):
 
 def revenue(v, M, A_1, A_2, A_3, A_4, a):
     return total_surplus(v, M, A_1, A_2, A_3, A_4, a) - M*bidder_surplus(v, M, A_1, A_2, A_3, A_4, a)
+
+def total_surplus_from_Q(Q, M, A_1, A_2, A_3, A_4, a):
+    psi = d(A_2)
+    chi = psi - d(A_4*psi)
+    return A_4[-1]*psi[-1]*Q[-1]-A_4*psi*Q + int_lowbound(chi*Q)

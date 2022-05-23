@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import norm
 import os
 from multiprocess import Pool
+#from pathos.multiprocessing import ProcessingPool as Pool
 
 from .estimators import *
 
@@ -47,7 +48,7 @@ def make_cb(self, confidence, draws, hyp):
 
     self.cb_one = np.percentile(sup, confidence)
     self.cb_two = np.percentile(supabs, confidence+(100-confidence)/2)
-    
+        
     if hyp == 'twosided':
         self.cb = self.cb_two
         
@@ -64,3 +65,37 @@ def make_cb(self, confidence, draws, hyp):
     
     self.data['_rev_cb'] = np.nan
     self.data.loc[self.active_index,'_rev_cb'] = self.M*self.a*self.A_3*self.A_4*self.core_cb
+    
+def make_cicb_for_ts(self, confidence, draws, hyp):
+    
+    def simulate_ts(i): 
+        np.random.seed(i)
+        hat_F = np.sort(np.random.uniform(0, 1, self.sample_size))
+        return total_surplus_from_Q(self.hat_q*hat_F, *self.part_options)
+    
+    p = Pool(os.cpu_count())
+    hat_TSs = np.array(p.map(simulate_ts, range(draws)))
+    p.close()
+    p.join()
+    
+    right = total_surplus_from_Q(self.hat_q*self.u_grid, *self.part_options)
+    
+    sup_ts = np.max((hat_TSs-right)[:,self.trim:-self.trim], axis = 1)
+    abs_ts = np.abs(hat_TSs-right)
+    supabs_ts = np.max(abs_ts[:,self.trim:-self.trim], axis = 1)
+    
+    self.ci_two_ts = np.percentile(abs_ts, confidence+(100-confidence)/2, axis = 0)
+    
+    self.cb_one_ts = np.percentile(sup_ts, confidence)
+    self.cb_two_ts = np.percentile(supabs_ts, confidence+(100-confidence)/2)
+    
+    if hyp == 'twosided':
+        self.cb_ts = self.cb_two_ts
+        self.ci_ts = self.ci_two_ts
+
+    self.data['_ts_ci'] = np.nan
+    self.data.loc[self.active_index,'_ts_ci'] = self.ci_ts
+        
+    self.data['_ts_cb'] = np.nan
+    self.data.loc[self.active_index,'_ts_cb'] = self.cb_ts
+    

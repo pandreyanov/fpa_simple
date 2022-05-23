@@ -4,12 +4,17 @@ import statsmodels.formula.api as smf
 import matplotlib.pyplot as plt
 import seaborn as sb
 from scipy.stats import norm
+import pkg_resources
 
 from .kernels import *
 from .estimators import *
 from .plots import *
 from .calibrate import *
 from .inference import *
+
+def load_haile():
+    stream = pkg_resources.resource_stream(__name__, 'data/haile_data.csv')
+    return pd.read_csv(stream, index_col=0)
 
 class Model:
     '''A package for the "Nonparametric inference on counterfactuals in sealed first-price auctions" paper.'''
@@ -111,6 +116,8 @@ class Model:
         self.hat_v = v_smooth(self.hat_Q, self.hat_q, self.A_4)
         
         self.ts = total_surplus(self.hat_v, *self.part_options)
+        self.ts2 = total_surplus_from_Q(self.hat_Q, *self.part_options)
+        
         self.bs = bidder_surplus(self.hat_v, *self.part_options)
         self.rev = revenue(self.hat_v, *self.part_options)
         
@@ -154,6 +161,13 @@ class Model:
     
     def make_cb(self, confidence, draws = 10000, hyp = 'twosided'):
         make_cb(self, confidence, draws, hyp)
+        
+    def make_cicb_for_ts(self, confidence, draws = 10000, hyp = 'twosided'):
+        make_cicb_for_ts(self, confidence, draws, hyp)
+        
+    def find_optimal_u(self):
+        self.opt_u = self.data._u[self.data._hat_rev.idxmax()]
+        print('optimal exclusion:', np.round(self.opt_u,5))
         
         
         
