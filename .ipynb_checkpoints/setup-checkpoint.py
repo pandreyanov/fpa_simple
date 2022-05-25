@@ -10,7 +10,7 @@ README = (HERE / "README.md").read_text()
 # This call to setup() does all the work
 setup(
     name="simple_fpa",
-    version="1.1.1",
+    version="1.2",
     description="Simple nonparametric inference for sealed first-price auctions.",
     long_description=README,
     long_description_content_type="text/markdown",

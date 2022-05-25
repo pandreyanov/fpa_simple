@@ -4,15 +4,16 @@ import statsmodels.formula.api as smf
 import matplotlib.pyplot as plt
 import seaborn as sb
 from scipy.stats import norm
+import pkg_resources
 
 from .kernels import *
 from .estimators import *
+from .plots import *
 from .calibrate import *
 from .inference import *
 
-#from pathos.multiprocessing import ProcessingPool as Pool
-from multiprocess import Pool
-
+from multiprocess import Pool    
+    
 def cens_Q(Q, x, eps):
     return (Q(eps+x*(1-2*eps))-Q(eps))/(Q(1-eps)-Q(eps))
 
@@ -25,7 +26,8 @@ def cens_q(f, Q, x, eps):
 class Simulator:
     '''Addition to the package for the "Nonparametric inference on counterfactuals in sealed first-price auctions" paper.'''
     
-    def __init__(self, sample_size, smoothing_rate, trim_percent, frec, rvpdf, rvppf, eps, reflect = True):
+    def __init__(self, sample_size, smoothing_rate, trim_percent, 
+                 frec, rvpdf, rvppf, eps, reflect = True):
         
         self.u_grid = np.linspace(0, 1, sample_size)
         
@@ -54,38 +56,38 @@ class Simulator:
         
     def make_true(self):
         
-        mc = np.sort(np.random.uniform(0, 1, self.sample_size))
-        hat_Q = self.Q_fun(mc)
-        self.hat_q_permanent = q_smooth(hat_Q, self.kernel, *self.band_options, is_sorted = True, reflect = self.reflect)
-        
         self.true_Q = self.Q_fun(self.u_grid)
         self.true_fQ = self.fQ_fun(self.u_grid)
         self.true_q = self.q_fun(self.u_grid)
         
-        self.true_v = v_smooth(self.true_Q, self.true_q, self.A_4)
-        
+        self.true_v = self.true_Q + self.A_4*self.true_q        
         self.true_ts = total_surplus(self.true_v, *self.part_options)
-        self.true_ts2 = total_surplus_from_Q(self.true_Q, *self.part_options)
         self.true_bs = bidder_surplus(self.true_v, *self.part_options)
         self.true_rev = self.true_ts - self.M*self.true_bs
-        self.true_rev2 = self.true_ts2 - self.M*self.true_bs
+        
+        # this is the correct way
+        self.true_ts = total_surplus_from_Q(self.true_Q, *self.part_options)
+        
+    def make_true_uni(self):
         
         self.true_Q_uni = self.u_grid
         self.true_fQ_uni = np.ones(self.sample_size)
         self.true_q_uni = np.ones(self.sample_size)
-        
-        # here comes the pivotization
+  
         # for smooth functionals
-        self.true_Q_uni *= self.hat_q_permanent
+        self.true_Q_uni *= self.true_q
         # for non-smooth functionals
-        self.true_q_uni *= self.hat_q_permanent
+        self.true_q_uni *= self.true_q
         
-        self.true_v_uni = v_smooth(self.true_Q_uni, self.true_q_uni, self.A_4)
-        self.true_ts_uni = total_surplus_from_Q(self.true_Q_uni, *self.part_options)
+        self.true_v_uni = self.true_Q_uni + self.A_4*self.true_q_uni
+        self.true_ts_uni = total_surplus(self.true_v_uni, *self.part_options)
         self.true_bs_uni = bidder_surplus(self.true_v_uni, *self.part_options)
         self.true_rev_uni = self.true_ts_uni - self.M*self.true_bs_uni
         
-    def simulate_uni(self, draws = 10000, nominal_coverage = 95): 
+        # this is the correct way
+        self.true_ts_uni = total_surplus_from_Q(self.true_Q_uni, *self.part_options)
+        
+    def simulate_uni(self, draws = 1000, nominal_coverage = 95): 
         
         def simulate_one_uni(i, smooth_Q = False): 
             np.random.seed(i)
@@ -96,22 +98,23 @@ class Simulator:
             if smooth_Q == True:
                 hat_Q = np.cumsum(hat_q)/len(hat_q)
             
-            # here comes the pivotization
             # for smooth functionals
-            hat_Q *= self.hat_q_permanent
+            hat_Q *= self.true_q
             # for non-smooth functionals
-            hat_q *= self.hat_q_permanent
-
+            hat_q *= self.true_q
             
             hat_v = hat_Q + self.A_4*hat_q
             hat_bs = bidder_surplus(hat_v, *self.part_options)
-            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
+            hat_ts = total_surplus(hat_v, *self.part_options)
             hat_rev = hat_ts - self.M*hat_bs
             
-            payload_1 = [hat_q, hat_v, hat_bs, hat_rev, hat_ts]
-            payload_2 = [self.true_q_uni, self.true_v_uni, self.true_bs_uni, self.true_rev_uni, self.true_ts_uni]
+            # this is the correct way
+            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
             
-            return [np.max((x-y)[self.trim:-self.trim]) for x,y in zip(payload_1,payload_2)]
+            left = [hat_q, hat_v, hat_bs, hat_rev, hat_ts]
+            right = [self.true_q_uni, self.true_v_uni, self.true_bs_uni, self.true_rev_uni, self.true_ts_uni]
+            
+            return [np.max(np.abs(x-y)[self.trim:-self.trim]) for x,y in zip(left,right)]
             
         p = Pool(os.cpu_count())
         hats_uni = np.array(p.map(simulate_one_uni, range(draws)))
@@ -120,7 +123,7 @@ class Simulator:
         
         self.crit_qs_uni = np.percentile(hats_uni, nominal_coverage, axis = 0)
         
-    def simulate_dgp(self, draws = 10000, nominal_coverage = 95): 
+    def simulate_dgp(self, draws = 1000, nominal_coverage = 95): 
         
         def simulate_one_dgp(i, smooth_Q = False): 
             np.random.seed(i)
@@ -133,13 +136,16 @@ class Simulator:
             
             hat_v = hat_Q + self.A_4*hat_q
             hat_bs = bidder_surplus(hat_v, *self.part_options)
-            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
+            hat_ts = total_surplus(hat_v, *self.part_options)
             hat_rev = hat_ts - self.M*hat_bs
             
-            payload_1 = [hat_q, hat_v, hat_bs, hat_rev, hat_ts]
-            payload_2 = [self.true_q, self.true_v, self.true_bs, self.true_rev, self.true_ts]
+            # this is the correct way
+            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
             
-            return [np.max((x-y)[self.trim:-self.trim]) for x,y in zip(payload_1,payload_2)]
+            left = [hat_q, hat_v, hat_bs, hat_rev, hat_ts]
+            right = [self.true_q, self.true_v, self.true_bs, self.true_rev, self.true_ts]
+            
+            return [np.max(np.abs(x-y)[self.trim:-self.trim]) for x,y in zip(left,right)]
             
         p = Pool(os.cpu_count())
         hats_dgp = np.array(p.map(simulate_one_dgp, range(draws)))
@@ -148,13 +154,76 @@ class Simulator:
         
         self.cov = np.round((1+np.mean(np.sign(self.crit_qs_uni-hats_dgp), axis = 0))/2, 3)
         
-        #self.crit_qs_dgp = np.percentile(hats_dgp, nominal_coverage, axis = 0)
+    def simulate_dgp_nested(self, inner_loop = 1000, outer_loop = 1000, nominal_coverage = 95): 
         
-        
+        def simulate_one(i, smooth_Q = False): 
+            np.random.seed(i)
+            mc = np.sort(np.random.uniform(0, 1, self.sample_size))
+            hat_Q = self.Q_fun(mc)
+            hat_q = q_smooth(hat_Q, self.kernel, *self.band_options, 
+                             is_sorted = True, reflect = self.reflect)
+            
+            if smooth_Q == True:
+                hat_Q = np.cumsum(hat_q)/len(hat_q)
+            
+            hat_v = hat_Q + self.A_4*hat_q
+            hat_ts = total_surplus(hat_v, *self.part_options)
+            hat_bs = bidder_surplus(hat_v, *self.part_options)
+            hat_rev = hat_ts - self.M*hat_bs
+            
+            # this is the correct way
+            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
+            
+            left = [hat_q, hat_v, hat_bs, 
+                    hat_rev, hat_ts]
+            right = [self.true_q, self.true_v, self.true_bs, 
+                     self.true_rev, self.true_ts]
+            
+            stat_dgp = [np.max(np.abs(x-y)[self.trim:-self.trim]) for x,y in zip(left,right)]
+            
+            stats_uni = []
+            for j in range(inner_loop):
+                np.random.seed(j)
+                hat_Q_uni = np.sort(np.random.uniform(0, 1, self.sample_size))
+                hat_q_uni = q_smooth(hat_Q_uni, self.kernel, *self.band_options, 
+                             is_sorted = True, reflect = self.reflect)
+                
+                if smooth_Q == True:
+                    hat_Q_uni = np.cumsum(hat_q_uni)/len(hat_q_uni)
+            
+                # here comes the pivotization
+                # for smooth functionals
+                hat_Q_uni *= self.true_q
+                # for non-smooth functionals
+                hat_q_uni *= self.true_q
+            
+                hat_v_uni = hat_Q_uni + self.A_4*hat_q_uni                
+                hat_ts_uni = total_surplus(hat_v_uni, *self.part_options)
+                hat_bs_uni = bidder_surplus(hat_v_uni, *self.part_options)
+                hat_rev_uni = hat_ts_uni - self.M*hat_bs_uni
+                
+                # this is the correct way
+                hat_ts_uni = total_surplus_from_Q(hat_Q_uni, *self.part_options)
+                
+                left = [hat_q_uni, hat_v_uni, 
+                        hat_bs_uni, hat_rev_uni, hat_ts_uni]
+                right = [self.true_q_uni, self.true_v_uni, 
+                         self.true_bs_uni, self.true_rev_uni, self.true_ts_uni]
 
+                stat_uni = [np.max(np.abs(x-y)[self.trim:-self.trim]) for x,y in zip(left,right)]
+                stats_uni.append(stat_uni)
+                
+            crit_uni = np.percentile(np.array(stats_uni), nominal_coverage, axis = 0)
+            return (np.sign(crit_uni - stat_dgp)+1)/2
+            
+        p = Pool(os.cpu_count())
+        rejections = np.array(p.map(simulate_one, range(outer_loop)))
+        p.close()
+        p.join()
         
-
+        self.cov = np.mean(rejections, axis = 0)
         
-
         
-
+        
+    
+        

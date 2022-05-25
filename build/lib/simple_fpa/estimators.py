@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.signal import fftconvolve
 
-def q_smooth(sorted_bids, kernel, sample_size, band, i_band, trim, is_sorted = False, paste_ends = False, reflect = False):
+def q_smooth(sorted_bids, kernel, sample_size, band, i_band, trim, is_sorted = False, reflect = True, paste_ends = False):
     
     if is_sorted == False:
         sorted_bids = np.sort(sorted_bids)

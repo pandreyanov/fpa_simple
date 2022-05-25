@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import norm
 import os
 from multiprocess import Pool
+#from pathos.multiprocessing import ProcessingPool as Pool
 
 from .estimators import *
 

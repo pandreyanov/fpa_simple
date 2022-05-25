@@ -1,0 +1,16 @@
+coverage using two separate loops
+******************************
+nominal coverage: 90
+   sample size: 1000
+      beta(1,1)   : q -   0.9, v -   0.9, bs -   0.9, rev -   0.9, ts -   0.9
+      beta(2,2)   : q -  0.91, v - 0.907, bs - 0.921, rev - 0.896, ts - 0.899
+      beta(5,2)   : q - 0.927, v - 0.905, bs - 0.913, rev - 0.902, ts -   0.9
+      beta(2,5)   : q - 0.922, v - 0.917, bs - 0.925, rev - 0.892, ts - 0.894
+      powerlaw(2) : q - 0.921, v - 0.902, bs - 0.901, rev - 0.899, ts - 0.903
+      powerlaw(3) : q - 0.928, v - 0.909, bs - 0.908, rev - 0.906, ts - 0.901
+   sample size: 10000
+      beta(1,1)   : q -   0.9, v -   0.9, bs -   0.9, rev -   0.9, ts -   0.9
+      beta(2,2)   : q - 0.904, v - 0.896, bs - 0.909, rev - 0.901, ts -   0.9
+      beta(5,2)   : q - 0.908, v - 0.895, bs - 0.913, rev -   0.9, ts - 0.899
+      beta(2,5)   : q - 0.911, v - 0.898, bs - 0.922, rev - 0.901, ts - 0.902
+      powerlaw(2) : q - 0.902, v - 0.903, bs - 0.906, rev - 0.903, ts - 0.898
