@@ -12,13 +12,11 @@ from .plots import *
 from .calibrate import *
 from .inference import *
 
-from multiprocess import Pool    
+from multiprocess import Pool
+import numba as nb
     
 def cens_Q(Q, x, eps):
     return (Q(eps+x*(1-2*eps))-Q(eps))/(Q(1-eps)-Q(eps))
-
-def cens_fQ(f, Q, x, eps):
-    return f(Q(eps+x*(1-2*eps)))*(Q(1-eps)-Q(eps))/(1-2*eps)
 
 def cens_q(f, Q, x, eps):
     return (1-2*eps)/(f(Q(eps+x*(1-2*eps)))*(Q(1-eps)-Q(eps)))
@@ -27,12 +25,11 @@ class Simulator:
     '''Addition to the package for the "Nonparametric inference on counterfactuals in sealed first-price auctions" paper.'''
     
     def __init__(self, sample_size, smoothing_rate, trim_percent, 
-                 frec, rvpdf, rvppf, eps, reflect = True):
+                 frec, rvpdf, rvppf, eps, draws):
         
         self.u_grid = np.linspace(0, 1, sample_size)
         
         self.Q_fun = lambda x: cens_Q(rvppf, x, eps)
-        self.fQ_fun = lambda x: cens_fQ(rvpdf, rvppf, x, eps)
         self.q_fun = lambda x: cens_q(rvpdf, rvppf, x, eps)
         
         self.sample_size = sample_size
@@ -40,7 +37,8 @@ class Simulator:
         
         self.smoothing = -smoothing_rate
         self.u_trim = trim_percent/100
-        self.reflect = reflect
+        
+        self.draws = draws
         
     def calibrate(self):
         
@@ -54,176 +52,120 @@ class Simulator:
         self.part_options = calibrate_part(self, self.u_grid, self.frec)
         self.M, self.A_1, self.A_2, self.A_3, self.A_4, self.a = self.part_options
         
-    def make_true(self):
+    def simulate(self):
         
-        self.true_Q = self.Q_fun(self.u_grid)
-        self.true_fQ = self.fQ_fun(self.u_grid)
-        self.true_q = self.q_fun(self.u_grid)
+        trim = self.trim
+        draws = self.draws
+        M = self.M
+        A_2 = self.A_2
+        A_3 = self.A_3
+        A_4 = self.A_4
+        a = self.a
+        u_grid = self.u_grid
         
-        self.true_v = self.true_Q + self.A_4*self.true_q        
-        self.true_ts = total_surplus(self.true_v, *self.part_options)
-        self.true_bs = bidder_surplus(self.true_v, *self.part_options)
-        self.true_rev = self.true_ts - self.M*self.true_bs
+        true_Q = self.Q_fun(self.u_grid)
+        true_q = self.q_fun(self.u_grid)
         
-        # this is the correct way
-        self.true_ts = total_surplus_from_Q(self.true_Q, *self.part_options)
+        # eraze boundary
+        true_Q[-self.trim:] = 0
+        true_q[-self.trim:] = 0
         
-    def make_true_uni(self):
-        
-        self.true_Q_uni = self.u_grid
-        self.true_fQ_uni = np.ones(self.sample_size)
-        self.true_q_uni = np.ones(self.sample_size)
-  
-        # for smooth functionals
-        self.true_Q_uni *= self.true_q
-        # for non-smooth functionals
-        self.true_q_uni *= self.true_q
-        
-        self.true_v_uni = self.true_Q_uni + self.A_4*self.true_q_uni
-        self.true_ts_uni = total_surplus(self.true_v_uni, *self.part_options)
-        self.true_bs_uni = bidder_surplus(self.true_v_uni, *self.part_options)
-        self.true_rev_uni = self.true_ts_uni - self.M*self.true_bs_uni
-        
-        # this is the correct way
-        self.true_ts_uni = total_surplus_from_Q(self.true_Q_uni, *self.part_options)
-        
-    def simulate_uni(self, draws = 1000, nominal_coverage = 95): 
-        
-        def simulate_one_uni(i, smooth_Q = False): 
+        def one_mc(i):
             np.random.seed(i)
-            mc = np.sort(np.random.uniform(0, 1, self.sample_size))
-            hat_Q = mc
-            hat_q = q_smooth(hat_Q, self.kernel, *self.band_options, is_sorted = True, reflect = self.reflect)
-            
-            if smooth_Q == True:
-                hat_Q = np.cumsum(hat_q)/len(hat_q)
-            
-            # for smooth functionals
-            hat_Q *= self.true_q
-            # for non-smooth functionals
-            hat_q *= self.true_q
-            
-            hat_v = hat_Q + self.A_4*hat_q
-            hat_bs = bidder_surplus(hat_v, *self.part_options)
-            hat_ts = total_surplus(hat_v, *self.part_options)
-            hat_rev = hat_ts - self.M*hat_bs
-            
-            # this is the correct way
-            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
-            
-            left = [hat_q, hat_v, hat_bs, hat_rev, hat_ts]
-            right = [self.true_q_uni, self.true_v_uni, self.true_bs_uni, self.true_rev_uni, self.true_ts_uni]
-            
-            return [np.max(np.abs(x-y)[self.trim:-self.trim]) for x,y in zip(left,right)]
-            
-        p = Pool(os.cpu_count())
-        hats_uni = np.array(p.map(simulate_one_uni, range(draws)))
-        p.close()
-        p.join()
-        
-        self.crit_qs_uni = np.percentile(hats_uni, nominal_coverage, axis = 0)
-        
-    def simulate_dgp(self, draws = 1000, nominal_coverage = 95): 
-        
-        def simulate_one_dgp(i, smooth_Q = False): 
-            np.random.seed(i)
-            mc = np.sort(np.random.uniform(0, 1, self.sample_size))
-            hat_Q = self.Q_fun(mc)
-            hat_q = q_smooth(hat_Q, self.kernel, *self.band_options, is_sorted = True, reflect = self.reflect)
-            
-            if smooth_Q == True:
-                hat_Q = np.cumsum(hat_q)/len(hat_q)
-            
-            hat_v = hat_Q + self.A_4*hat_q
-            hat_bs = bidder_surplus(hat_v, *self.part_options)
-            hat_ts = total_surplus(hat_v, *self.part_options)
-            hat_rev = hat_ts - self.M*hat_bs
-            
-            # this is the correct way
-            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
-            
-            left = [hat_q, hat_v, hat_bs, hat_rev, hat_ts]
-            right = [self.true_q, self.true_v, self.true_bs, self.true_rev, self.true_ts]
-            
-            return [np.max(np.abs(x-y)[self.trim:-self.trim]) for x,y in zip(left,right)]
-            
-        p = Pool(os.cpu_count())
-        hats_dgp = np.array(p.map(simulate_one_dgp, range(draws)))
-        p.close()
-        p.join()
-        
-        self.cov = np.round((1+np.mean(np.sign(self.crit_qs_uni-hats_dgp), axis = 0))/2, 3)
-        
-    def simulate_dgp_nested(self, inner_loop = 1000, outer_loop = 1000, nominal_coverage = 95): 
-        
-        def simulate_one(i, smooth_Q = False): 
-            np.random.seed(i)
-            mc = np.sort(np.random.uniform(0, 1, self.sample_size))
-            hat_Q = self.Q_fun(mc)
-            hat_q = q_smooth(hat_Q, self.kernel, *self.band_options, 
-                             is_sorted = True, reflect = self.reflect)
-            
-            if smooth_Q == True:
-                hat_Q = np.cumsum(hat_q)/len(hat_q)
-            
-            hat_v = hat_Q + self.A_4*hat_q
-            hat_ts = total_surplus(hat_v, *self.part_options)
-            hat_bs = bidder_surplus(hat_v, *self.part_options)
-            hat_rev = hat_ts - self.M*hat_bs
-            
-            # this is the correct way
-            hat_ts = total_surplus_from_Q(hat_Q, *self.part_options)
-            
-            left = [hat_q, hat_v, hat_bs, 
-                    hat_rev, hat_ts]
-            right = [self.true_q, self.true_v, self.true_bs, 
-                     self.true_rev, self.true_ts]
-            
-            stat_dgp = [np.max(np.abs(x-y)[self.trim:-self.trim]) for x,y in zip(left,right)]
-            
-            stats_uni = []
-            for j in range(inner_loop):
-                np.random.seed(j)
-                hat_Q_uni = np.sort(np.random.uniform(0, 1, self.sample_size))
-                hat_q_uni = q_smooth(hat_Q_uni, self.kernel, *self.band_options, 
-                             is_sorted = True, reflect = self.reflect)
-                
-                if smooth_Q == True:
-                    hat_Q_uni = np.cumsum(hat_q_uni)/len(hat_q_uni)
-            
-                # here comes the pivotization
-                # for smooth functionals
-                hat_Q_uni *= self.true_q
-                # for non-smooth functionals
-                hat_q_uni *= self.true_q
-            
-                hat_v_uni = hat_Q_uni + self.A_4*hat_q_uni                
-                hat_ts_uni = total_surplus(hat_v_uni, *self.part_options)
-                hat_bs_uni = bidder_surplus(hat_v_uni, *self.part_options)
-                hat_rev_uni = hat_ts_uni - self.M*hat_bs_uni
-                
-                # this is the correct way
-                hat_ts_uni = total_surplus_from_Q(hat_Q_uni, *self.part_options)
-                
-                left = [hat_q_uni, hat_v_uni, 
-                        hat_bs_uni, hat_rev_uni, hat_ts_uni]
-                right = [self.true_q_uni, self.true_v_uni, 
-                         self.true_bs_uni, self.true_rev_uni, self.true_ts_uni]
 
-                stat_uni = [np.max(np.abs(x-y)[self.trim:-self.trim]) for x,y in zip(left,right)]
-                stats_uni.append(stat_uni)
-                
-            crit_uni = np.percentile(np.array(stats_uni), nominal_coverage, axis = 0)
-            return (np.sign(crit_uni - stat_dgp)+1)/2
-            
+            Q_uni = np.sort(np.random.uniform(0, 1, self.sample_size))
+            Q_dgp = self.Q_fun(Q_uni)
+
+            q_uni = q_smooth(Q_uni, self.kernel, *self.band_options, is_sorted = True, reflect = False)
+            q_dgp = q_smooth(Q_dgp, self.kernel, *self.band_options, is_sorted = True, reflect = False)
+
+            # eraze boundary
+            Q_uni[-self.trim:] = 0
+            q_uni[-self.trim:] = 0
+            Q_dgp[-self.trim:] = 0
+            q_dgp[-self.trim:] = 0
+
+            return [Q_uni, q_uni, Q_dgp, q_dgp]
+        
         p = Pool(os.cpu_count())
-        rejections = np.array(p.map(simulate_one, range(outer_loop)))
+        all_mc = np.array(p.map(one_mc, range(self.draws)))
         p.close()
         p.join()
         
-        self.cov = np.mean(rejections, axis = 0)
+        all_Q_uni  = all_mc[:,0,:].copy()
+        all_q_uni  = all_mc[:,1,:].copy()
+
+        all_Q_dgp  = all_mc[:,2,:].copy()
+        all_q_dgp  = all_mc[:,3,:].copy()
+
+        del(all_mc)
         
+        @nb.jit(nopython = True)
+        def d_numba(arr):
+            diff = arr - np.roll(arr, 1)
+            diff[0] = diff[1]
+            return diff*len(diff)
+
+        @nb.jit(nopython = True)
+        def int_lowbound_numba(arr):
+            return np.flip(np.cumsum(np.flip(arr)))/len(arr)
         
+        psi = d_numba(A_2)
+        chi = psi - d_numba(A_4*psi)
         
-    
+        stats_dgp = np.zeros(shape = (draws, 5), dtype = np.float)
+        
+        @nb.jit(nopython = True, parallel = True)
+        def simulate_all_dgp(stats_dgp):
+            for i in nb.prange(draws):
+                delta_Q = all_Q_dgp[i]-true_Q
+                delta_q = all_q_dgp[i]-true_q
+
+                delta_v = delta_Q + A_4*delta_q
+                delta_ts = int_lowbound_numba(delta_v*d_numba(A_2))
+                delta_bs = a*int_lowbound_numba(A_3*d_numba(delta_v))
+                delta_rev = delta_ts - M*delta_bs
+
+                # this is a better way
+                delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
+
+                stats_dgp[i,0] = np.max(np.abs(delta_q)[trim:-trim])
+                stats_dgp[i,1] = np.max(np.abs(delta_v)[trim:-trim])
+                stats_dgp[i,2] = np.max(np.abs(delta_bs)[trim:-trim])
+                stats_dgp[i,3] = np.max(np.abs(delta_rev)[trim:-trim])
+                stats_dgp[i,4] = np.max(np.abs(delta_ts)[trim:-trim])
+                
+        simulate_all_dgp(stats_dgp)
+        self.stats_dgp = stats_dgp
+        
+        stats_uni = np.zeros(shape = (draws, draws, 5), dtype = np.float)
+
+        @nb.jit(nopython = True, parallel = True)
+        def simulate_all_uni(stats_uni):
+            for i in nb.prange(draws):
+                for j in nb.prange(draws):
+                    delta_Q = (all_Q_uni[j]-u_grid)*all_q_dgp[i]
+                    delta_q = (all_q_uni[j]-1)*all_q_dgp[i]
+
+                    delta_v = delta_Q + A_4*delta_q
+                    delta_ts = int_lowbound_numba(delta_v*d_numba(A_2))
+                    delta_bs = a*int_lowbound_numba(A_3*d_numba(delta_v))
+                    delta_rev = delta_ts - M*delta_bs
+
+                    # this is a better way
+                    delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
+
+                    stats_uni[i,j,0] = np.max(np.abs(delta_q)[trim:-trim])
+                    stats_uni[i,j,1] = np.max(np.abs(delta_v)[trim:-trim])
+                    stats_uni[i,j,2] = np.max(np.abs(delta_bs)[trim:-trim])
+                    stats_uni[i,j,3] = np.max(np.abs(delta_rev)[trim:-trim])
+                    stats_uni[i,j,4] = np.max(np.abs(delta_ts)[trim:-trim])
+                    
+        simulate_all_uni(stats_uni)
+        self.stats_uni = stats_uni
+        
+    def get_coverage(self, nominal_coverage, digits):
+        crit_uni = np.percentile(self.stats_uni.reshape(self.draws, self.draws, 5), nominal_coverage, axis = 1)
+        return {i:np.round((np.mean(np.sign(crit_uni[:,j]-self.stats_dgp[:,j]))+1)/2, digits) for i,j in zip(['q','v','bs','rev','ts'],range(5))}
+        
         
