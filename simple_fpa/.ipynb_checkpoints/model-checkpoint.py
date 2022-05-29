@@ -166,6 +166,22 @@ class Model:
         self.opt_u = self.data._u[self.data._hat_rev.idxmax()]
         print('optimal exclusion:', np.round(self.opt_u,5))
         
+    def find_expected_fitted(self):
+        self.expfit = np.mean(self.data._fitted)
+        print('expected fitted value:', np.round(self.expfit, 2))
+        
+    def plot_bidders(self, ax):
+        plot_bidders(self, ax)
+        
+    def plot_bid_residuals(self, ax):
+        plot_bid_residuals(self, ax)
+        
+    def plot_ci(self, ax):
+        plot_ci(self, ax)
+        
+    def plot_cb(self, ax):
+        plot_cb(self, ax)
+        
         
         
         

@@ -8,22 +8,22 @@ from pylab import rcParams
 def plot_ci(self, ax):
     
     ax.plot(self.data._u, self.data._hat_ts, label = 'ts', color = 'green')
-    ax.plot(self.data._u, self.data._hat_ts + self.data._ts_ci, color = 'green', linestyle = '--',linewidth = 1)
-    ax.plot(self.data._u, self.data._hat_ts - self.data._ts_ci, color = 'green', linestyle = '--',linewidth = 1)
+    ax.plot(self.data._u, self.data._hat_ts + self.data._ts_ci, color = 'green', linestyle = '--',linewidth = .7)
+    ax.plot(self.data._u, self.data._hat_ts - self.data._ts_ci, color = 'green', linestyle = '--',linewidth = .7)
     
     ax.plot(self.data._u, self.M*self.data._hat_bs, label = 'M*bs', color = 'red', linewidth=1)
     ax.plot(self.data._u, self.M*(self.data._bs_ci+self.data._hat_bs), 
-            color = 'red', linestyle = '--', linewidth = 1)
+            color = 'red', linestyle = '--', linewidth = .7)
     ax.plot(self.data._u, self.M*(-self.data._bs_ci+self.data._hat_bs), 
-            color = 'red', linestyle = '--', linewidth = 1)
+            color = 'red', linestyle = '--', linewidth = .7)
     
     ax.plot(self.data._u, self.data._hat_rev, label = 'rev', color = 'blue')
     ax.plot(self.data._u, self.data._rev_ci + self.data._hat_rev, 
-            color = 'blue', linestyle = '--',linewidth = 1)
+            color = 'blue', linestyle = '--',linewidth = .7)
     ax.plot(self.data._u, -self.data._rev_ci + self.data._hat_rev, 
-            color = 'blue', linestyle = '--',linewidth = 1)
+            color = 'blue', linestyle = '--',linewidth = .7)
     
-    ax.axvline(self.opt_u, linewidth = 1, color = 'black', label = 'optimal exclusion', linestyle = 'dotted')
+    ax.axvline(self.opt_u, linewidth = .7, color = 'black', label = 'optimal exclusion', linestyle = 'dotted')
     
     ax.legend(loc = 'upper right')
     ax.set_xlabel('confidence intervals')
@@ -31,22 +31,22 @@ def plot_ci(self, ax):
 def plot_cb(self, ax):
     
     ax.plot(self.data._u, self.data._hat_ts, label = 'ts', color = 'green')
-    ax.plot(self.data._u, self.data._hat_ts + self.data._ts_cb, color = 'green', linestyle = '--',linewidth = 1)
-    ax.plot(self.data._u, self.data._hat_ts - self.data._ts_cb, color = 'green', linestyle = '--',linewidth = 1)
+    ax.plot(self.data._u, self.data._hat_ts + self.data._ts_cb, color = 'green', linestyle = '--',linewidth = .7)
+    ax.plot(self.data._u, self.data._hat_ts - self.data._ts_cb, color = 'green', linestyle = '--',linewidth = .7)
     
     ax.plot(self.data._u, self.M*self.data._hat_bs, color = 'red', linewidth=1)
     ax.plot(self.data._u, self.M*(self.data._bs_cb+self.data._hat_bs), 
-            color = 'red', linestyle = '--',linewidth = 1)
+            color = 'red', linestyle = '--',linewidth = .7)
     ax.plot(self.data._u, self.M*(-self.data._bs_cb+self.data._hat_bs), 
-            color = 'red', linestyle = '--',linewidth = 1)
+            color = 'red', linestyle = '--',linewidth = .7)
     
     ax.plot(self.data._u, self.data._hat_rev, color = 'blue')
     ax.plot(self.data._u, self.data._rev_cb + self.data._hat_rev, 
-            color = 'blue', linestyle = '--',linewidth = 1)
+            color = 'blue', linestyle = '--',linewidth = .7)
     ax.plot(self.data._u, -self.data._rev_cb + self.data._hat_rev, 
-            color = 'blue', linestyle = '--',linewidth = 1)
+            color = 'blue', linestyle = '--',linewidth = .7)
     
-    ax.axvline(self.opt_u, linewidth = 1, color = 'black', linestyle = 'dotted')
+    ax.axvline(self.opt_u, linewidth = .7, color = 'black', linestyle = 'dotted')
     
     ax.set_xlabel('confidence bands')
 
@@ -98,9 +98,9 @@ def plot_densities(self, ax):
     
     ax.plot(self.u_grid, 
              self.hat_q, 
-             label = 'smooth $\hat q(u)$', linewidth = 1, color = 'blue')
-    ax.plot(self.u_grid, self.hat_q+ciq, linestyle = '--', linewidth = 1, color = 'blue')
-    ax.plot(self.u_grid, self.hat_q-ciq, linestyle = '--', linewidth = 1, color = 'blue')
+             label = 'smooth $\hat q(u)$', linewidth = .7, color = 'blue')
+    ax.plot(self.u_grid, self.hat_q+ciq, linestyle = '--', linewidth = .7, color = 'blue')
+    ax.plot(self.u_grid, self.hat_q-ciq, linestyle = '--', linewidth = .7, color = 'blue')
     
     
     ax.plot(self.u_grid, 
@@ -160,7 +160,7 @@ def plot_stats(self):
     plot_aux(self, ax3)
     plot_densities(self, ax4)
     plot_quantiles(self, ax5)
-    plot_bid_residuals(self, ax6)
+    plot_val_residuals(self, ax6)
 
     plt.tight_layout()
     plt.show()
