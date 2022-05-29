@@ -156,14 +156,11 @@ class Model:
     def plot_counterfactuals(self):
         plot_counterfactuals(self)
         
-    def make_ci(self, confidence, hyp = 'twosided'):
-        make_ci(self, confidence, hyp)
+    def make_ci_asy(self, confidence, hyp = 'twosided'):
+        make_ci_asy(self, confidence, hyp)
     
-    def make_cb(self, confidence, draws = 10000, hyp = 'twosided'):
-        make_cb(self, confidence, draws, hyp)
-        
-    def make_cicb_for_ts(self, confidence, draws = 10000, hyp = 'twosided'):
-        make_cicb_for_ts(self, confidence, draws, hyp)
+    def make_cicb(self, confidence, draws = 10000, hyp = 'twosided'):
+        make_cicb(self, confidence, draws, hyp)
         
     def find_optimal_u(self):
         self.opt_u = self.data._u[self.data._hat_rev.idxmax()]

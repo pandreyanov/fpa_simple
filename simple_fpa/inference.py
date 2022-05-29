@@ -6,7 +6,11 @@ from multiprocess import Pool
 
 from .estimators import *
 
-def make_ci(self, confidence, hyp):
+def add_column(self, name, values):
+    self.data[name] = np.nan
+    self.data.loc[self.active_index,name] = values
+    
+def make_ci_asy(self, confidence, hyp):
     
     one = norm.ppf(confidence/100)
     two = norm.ppf((confidence+(100-confidence)/2)/100)
@@ -16,86 +20,76 @@ def make_ci(self, confidence, hyp):
     
     if hyp == 'twosided':
         self.ci = self.ci_two
+    if hyp == 'onesided':
+        self.ci = self.ci_one
 
     self.core_ci = self.ci*self.hat_q/np.sqrt(self.sample_size*self.band)
         
-    self.data['_q_ci'] = np.nan
-    self.data.loc[self.active_index,'_q_ci'] = self.core_ci
+    add_column(self, '_q_ci_asy', self.core_ci)
+    add_column(self, '_v_ci_asy', self.A_4*self.core_ci)
+    add_column(self, '_bs_ci_asy', self.a*self.A_3*self.A_4*self.core_ci)
+    add_column(self, '_rev_ci_asy', self.M*self.a*self.A_3*self.A_4*self.core_ci)
+    
+def make_cicb(self, confidence, draws, hyp):
 
-    self.data['_v_ci'] = np.nan
-    self.data.loc[self.active_index,'_v_ci'] = self.A_4*self.core_ci
+    def simulate_Q(i): 
+        np.random.seed(i)
+        mc = np.sort(np.random.uniform(0, 1, self.sample_size))
+        return self.hat_q*(mc-self.u_grid)
     
-    self.data['_bs_ci'] = np.nan
-    self.data.loc[self.active_index,'_bs_ci'] = self.a*self.A_3*self.A_4*self.core_ci
+    p = Pool(os.cpu_count())
+    delta_Qs = np.array(p.map(simulate_Q, range(draws)))
+    p.close()
+    p.join()
     
-    self.data['_rev_ci'] = np.nan
-    self.data.loc[self.active_index,'_rev_ci'] = self.M*self.a*self.A_3*self.A_4*self.core_ci
-    
-def make_cb(self, confidence, draws, hyp):
-
     def simulate_q(i): 
         np.random.seed(i)
         mc = np.sort(np.random.uniform(0, 1, self.sample_size))
-        return q_smooth(mc, self.kernel, *self.band_options, reflect = True, is_sorted = True)
+        mcq = q_smooth(mc, self.kernel, *self.band_options, reflect = True, is_sorted = True)
+        return self.hat_q*(mcq-1)
 
     p = Pool(os.cpu_count())
-    hat_qs = np.array(p.map(simulate_q, range(draws)))
+    delta_qs = np.array(p.map(simulate_q, range(draws)))
     p.close()
     p.join()
-    
-    sup = np.max((hat_qs-1)[:,self.trim:-self.trim], axis = 1)
-    supabs = np.max(np.abs(hat_qs-1)[:,self.trim:-self.trim], axis = 1)
-
-    self.cb_one = np.percentile(sup, confidence)
-    self.cb_two = np.percentile(supabs, confidence+(100-confidence)/2)
         
     if hyp == 'twosided':
-        self.cb = self.cb_two
+        def _sup(x):
+            return np.max(np.abs(x)[:,self.trim:-self.trim], axis = 1)
+        def _perc(x):
+            return np.percentile(x, confidence+(100-confidence)/2, axis = 0)
+    if hyp == 'onesided':
+        def _sup(x):
+            return np.max(x[:,self.trim:-self.trim], axis = 1)
+        def _perc(x):
+            return np.percentile(x, confidence, axis = 0)
         
-    self.core_cb = self.cb*self.hat_q
-        
-    self.data['_q_cb'] = np.nan
-    self.data.loc[self.active_index,'_q_cb'] = self.core_cb
-
-    self.data['_v_cb'] = np.nan
-    self.data.loc[self.active_index,'_v_cb'] = self.A_4*self.core_cb
+    add_column(self, '_q_ci', _perc(delta_qs))
+    add_column(self, '_q_cb', _perc(_sup(delta_qs)))
     
-    self.data['_bs_cb'] = np.nan
-    self.data.loc[self.active_index,'_bs_cb'] = self.a*self.A_3*self.A_4*self.core_cb
+    delta_vs = delta_Qs + self.A_4*delta_qs
+    del(delta_qs)
     
-    self.data['_rev_cb'] = np.nan
-    self.data.loc[self.active_index,'_rev_cb'] = self.M*self.a*self.A_3*self.A_4*self.core_cb
+    add_column(self, '_v_ci', _perc(delta_vs))
+    add_column(self, '_v_cb', _perc(_sup(delta_vs)))
     
-def make_cicb_for_ts(self, confidence, draws, hyp):
+    delta_ts = np.apply_along_axis(lambda x: total_surplus_from_Q(x, *self.part_options), 1, delta_Qs)
+    del(delta_Qs)
     
-    def simulate_ts(i): 
-        np.random.seed(i)
-        hat_F = np.sort(np.random.uniform(0, 1, self.sample_size))
-        return total_surplus_from_Q(self.hat_q*hat_F, *self.part_options)
+    add_column(self, '_ts_ci', _perc(delta_ts))
+    add_column(self, '_ts_cb', _perc(_sup(delta_ts)))
     
-    p = Pool(os.cpu_count())
-    hat_TSs = np.array(p.map(simulate_ts, range(draws)))
-    p.close()
-    p.join()
+    delta_bs = np.apply_along_axis(lambda x: bidder_surplus(x, *self.part_options), 1, delta_vs)
+    del(delta_vs)
     
-    right = total_surplus_from_Q(self.hat_q*self.u_grid, *self.part_options)
+    add_column(self, '_bs_ci', _perc(delta_bs))
+    add_column(self, '_bs_cb', _perc(_sup(delta_bs)))
     
-    sup_ts = np.max((hat_TSs-right)[:,self.trim:-self.trim], axis = 1)
-    abs_ts = np.abs(hat_TSs-right)
-    supabs_ts = np.max(abs_ts[:,self.trim:-self.trim], axis = 1)
+    delta_rev = delta_ts - self.M*delta_bs
+    del(delta_ts, delta_bs)
     
-    self.ci_two_ts = np.percentile(abs_ts, confidence+(100-confidence)/2, axis = 0)
+    add_column(self, '_rev_ci', _perc(delta_rev))
+    add_column(self, '_rev_cb', _perc(_sup(delta_rev)))
     
-    self.cb_one_ts = np.percentile(sup_ts, confidence)
-    self.cb_two_ts = np.percentile(supabs_ts, confidence+(100-confidence)/2)
-    
-    if hyp == 'twosided':
-        self.cb_ts = self.cb_two_ts
-        self.ci_ts = self.ci_two_ts
-
-    self.data['_ts_ci'] = np.nan
-    self.data.loc[self.active_index,'_ts_ci'] = self.ci_ts
-        
-    self.data['_ts_cb'] = np.nan
-    self.data.loc[self.active_index,'_ts_cb'] = self.cb_ts
-    
+    del(delta_rev)
+            

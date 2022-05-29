@@ -104,5 +104,7 @@ The counterfactuals are populated into the original dataset, ordered by the magn
 - *_hat_bs* : (one) potential bidder surplus as function of exclusion level u
 - *_hat_rev* : auctioneer revenue as function of exclusion level u
 
-- *q_ci*, *v_ci*, *_bs_ci*, *_ts_ci*, *_rev_ci* : respective asymptotic confidence intervals
-- *q_cb*, *v_cb*, *_bs_cb*, *_ts_cb*, *_rev_cb* : respective asymptotic confidence bands
+- *q_ci*, *v_ci*, *_bs_ci*, *_ts_ci*, *_rev_ci* : simulated confidence intervals
+- *q_cb*, *v_cb*, *_bs_cb*, *_ts_cb*, *_rev_cb* : simulated confidence bands
+
+- *q_cb_asy*, *v_cb_asy*, *_bs_cb_asy*, *_rev_cb_asy* : asymptotic (theoretical) confidence intervals
