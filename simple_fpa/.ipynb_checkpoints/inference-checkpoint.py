@@ -30,7 +30,7 @@ def make_ci_asy(self, confidence, hyp):
     add_column(self, '_bs_ci_asy', self.a*self.A_3*self.A_4*self.core_ci)
     add_column(self, '_rev_ci_asy', self.M*self.a*self.A_3*self.A_4*self.core_ci)
     
-def make_cicb(self, confidence, draws, hyp):
+def make_cicb(self, confidence, draws, hyp, boundary):
 
     def simulate_Q(i): 
         np.random.seed(i)
@@ -45,13 +45,19 @@ def make_cicb(self, confidence, draws, hyp):
     def simulate_q(i): 
         np.random.seed(i)
         mc = np.sort(np.random.uniform(0, 1, self.sample_size))
-        mcq = q_smooth(mc, self.kernel, *self.band_options, reflect = True, is_sorted = True)
+        mcq = q_smooth(mc, self.kernel, *self.band_options, is_sorted = True, boundary = boundary)
         return self.hat_q*(mcq-1)
 
     p = Pool(os.cpu_count())
     delta_qs = np.array(p.map(simulate_q, range(draws)))
     p.close()
     p.join()
+    
+    if boundary == 'zero':
+        delta_qs[:,-self.trim:] = 0
+        delta_qs[:,:self.trim] = 0
+        delta_Qs[:,-self.trim:] = 0
+        delta_Qs[:,:self.trim] = 0
         
     if hyp == 'twosided':
         def _sup(x):
