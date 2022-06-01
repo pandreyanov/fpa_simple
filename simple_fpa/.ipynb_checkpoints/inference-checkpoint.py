@@ -98,4 +98,66 @@ def make_cicb(self, confidence, draws, hyp, boundary):
     add_column(self, '_rev_cb', _perc(_sup(delta_rev)))
     
     del(delta_rev)
+    
+def make_cicb_other(self, confidence, draws, hyp, boundary):
+
+    def simulate_Q(i): 
+        np.random.seed(i)
+        mc = np.sort(np.random.uniform(0, 1, self.sample_size))
+        return self.hat_q*(mc-self.u_grid) # this is not uniform
+    
+    p = Pool(os.cpu_count())
+    delta_Qs = np.array(p.map(simulate_Q, range(draws)))
+    p.close()
+    p.join()
+    
+    def simulate_q_uni(i): 
+        np.random.seed(i)
+        mc = np.sort(np.random.uniform(0, 1, self.sample_size))
+        mcq = q_smooth(mc, self.kernel, *self.band_options, is_sorted = True, boundary = boundary)
+        return mcq-1 # this is uniform
+
+    p = Pool(os.cpu_count())
+    delta_qs_uni = np.array(p.map(simulate_q_uni, range(draws)))
+    p.close()
+    p.join()
+    
+    if boundary == 'zero':
+        delta_qs_uni[:,-self.trim:] = 0
+        delta_qs_uni[:,:self.trim] = 0
+        delta_Qs[:,-self.trim:] = 0
+        delta_Qs[:,:self.trim] = 0
+        
+    if hyp == 'twosided':
+        def _sup(x):
+            return np.max(np.abs(x)[:,self.trim:-self.trim], axis = 1)
+        def _perc(x):
+            return np.percentile(x, confidence+(100-confidence)/2, axis = 0)
+    if hyp == 'onesided':
+        def _sup(x):
+            return np.max(x[:,self.trim:-self.trim], axis = 1)
+        def _perc(x):
+            return np.percentile(x, confidence, axis = 0)
+        
+    delta_ts = np.apply_along_axis(lambda x: total_surplus_from_Q(x, *self.part_options), 1, delta_Qs)
+    del(delta_Qs)
+       
+    add_column(self, '_ts_ci', _perc(delta_ts))
+    add_column(self, '_ts_cb', _perc(_sup(delta_ts)))
+        
+    core_ci = _perc(delta_qs_uni)
+    core_cb = _perc(_sup(delta_qs_uni))
+    del(delta_qs_uni)
+    
+    add_column(self, '_q_ci', self.hat_q*core_ci)
+    add_column(self, '_q_cb', self.hat_q*core_cb)
+    
+    add_column(self, '_v_ci', self.A_4*self.hat_q*core_ci)
+    add_column(self, '_v_cb', self.A_4*self.hat_q*core_cb)
+    
+    add_column(self, '_bs_ci', self.a*self.A_3*self.A_4*self.hat_q*core_ci)
+    add_column(self, '_bs_cb', self.a*self.A_3*self.A_4*self.hat_q*core_cb)
+    
+    add_column(self, '_rev_ci', self.M*self.a*self.A_3*self.A_4*self.hat_q*core_ci)
+    add_column(self, '_rev_cb', self.M*self.a*self.A_3*self.A_4*self.hat_q*core_cb)
             
