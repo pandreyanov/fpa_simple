@@ -30,12 +30,12 @@ def make_ci_asy(self, confidence, hyp):
     add_column(self, '_bs_ci_asy', self.a*self.A_3*self.A_4*self.core_ci)
     add_column(self, '_rev_ci_asy', self.M*self.a*self.A_3*self.A_4*self.core_ci)
     
-def make_cicb(self, confidence, draws, hyp):
+def make_cicb(self, confidence, draws, hyp, boundary):
 
     def simulate_Q(i): 
         np.random.seed(i)
         mc = np.sort(np.random.uniform(0, 1, self.sample_size))
-        return self.hat_q*(mc-self.u_grid)
+        return self.hat_q*(mc-self.u_grid) # this is not uniform
     
     p = Pool(os.cpu_count())
     delta_Qs = np.array(p.map(simulate_Q, range(draws)))
@@ -45,13 +45,19 @@ def make_cicb(self, confidence, draws, hyp):
     def simulate_q(i): 
         np.random.seed(i)
         mc = np.sort(np.random.uniform(0, 1, self.sample_size))
-        mcq = q_smooth(mc, self.kernel, *self.band_options, reflect = True, is_sorted = True)
-        return self.hat_q*(mcq-1)
+        mcq = q_smooth(mc, self.kernel, *self.band_options, is_sorted = True, boundary = boundary)
+        return (mcq-1) # this is uniform
 
     p = Pool(os.cpu_count())
     delta_qs = np.array(p.map(simulate_q, range(draws)))
     p.close()
     p.join()
+    
+    if boundary == 'zero':
+        delta_qs[:,-self.trim:] = 0
+        delta_qs[:,:self.trim] = 0
+        delta_Qs[:,-self.trim:] = 0
+        delta_Qs[:,:self.trim] = 0
         
     if hyp == 'twosided':
         def _sup(x):
@@ -64,31 +70,24 @@ def make_cicb(self, confidence, draws, hyp):
         def _perc(x):
             return np.percentile(x, confidence, axis = 0)
         
-    add_column(self, '_q_ci', _perc(delta_qs))
-    add_column(self, '_q_cb', _perc(_sup(delta_qs)))
-    
-    delta_vs = delta_Qs + self.A_4*delta_qs
-    
-    del(delta_qs)
-    
-    add_column(self, '_v_ci', _perc(delta_vs))
-    add_column(self, '_v_cb', _perc(_sup(delta_vs)))
-    
-    delta_bs = np.apply_along_axis(lambda x: bidder_surplus(x, *self.part_options), 1, delta_vs)
-    
-    add_column(self, '_bs_ci', _perc(delta_bs))
-    add_column(self, '_bs_cb', _perc(_sup(delta_bs)))
-    
-    delta_ts = np.apply_along_axis(lambda x: total_surplus(x, *self.part_options), 1, delta_vs)
-    delta_rev = delta_ts - self.M*delta_bs
-    add_column(self, '_rev_ci', _perc(delta_rev))
-    add_column(self, '_rev_cb', _perc(_sup(delta_rev)))
-    
-    del(delta_vs, delta_rev)
-
     delta_ts = np.apply_along_axis(lambda x: total_surplus_from_Q(x, *self.part_options), 1, delta_Qs)
+    del(delta_Qs)
+       
     add_column(self, '_ts_ci', _perc(delta_ts))
     add_column(self, '_ts_cb', _perc(_sup(delta_ts)))
+        
+    core_ci = self.hat_q*_perc(delta_qs)
+    core_cb = self.hat_q*_perc(_sup(delta_qs))
+    del(delta_qs)
     
-    del(delta_ts, delta_Qs)
-            
+    add_column(self, '_q_ci', core_ci)
+    add_column(self, '_q_cb', core_cb)
+    
+    add_column(self, '_v_ci', self.A_4*core_ci)
+    add_column(self, '_v_cb', self.A_4*core_cb)
+    
+    add_column(self, '_bs_ci', self.a*self.A_3*self.A_4*core_ci)
+    add_column(self, '_bs_cb', self.a*self.A_3*self.A_4*core_cb)
+    
+    add_column(self, '_rev_ci', self.M*self.a*self.A_3*self.A_4*core_ci)
+    add_column(self, '_rev_cb', self.M*self.a*self.A_3*self.A_4*core_cb)

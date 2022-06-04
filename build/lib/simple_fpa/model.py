@@ -83,7 +83,7 @@ class Model:
         self.data['_trimmed'] = 0
         self.data.loc[(self.data._resid < left) | (self.data._resid > right), '_trimmed'] = 1
     
-    def fit(self, smoothing_rate = 0.2, trim_percent = 5, reflect = True):
+    def fit(self, smoothing_rate = 0.2, trim_percent = 5, boundary = 'reflect'):
         
         self.observations = self.data[self.data._trimmed == 0]._resid.values.copy()
         
@@ -94,7 +94,7 @@ class Model:
         
         self.smoothing = -smoothing_rate
         self.u_trim = trim_percent/100
-        self.reflect = reflect
+        self.boundary = boundary
         
         self.band_options = calibrate_band(self, self.observations, self.u_trim, self.smoothing)
         self.sample_size, self.band, self.i_band, self.trim = self.band_options
@@ -107,11 +107,9 @@ class Model:
          
         self.hat_Q = self.intercept + self.scale*self.observations # they are sorted with the dataset
         
-        self.hat_f = f_smooth(self.observations, self.kernel, *self.band_options, 
-                              paste_ends = False, reflect = reflect)/self.scale # might be unnecessary
-        
+        self.hat_f = f_smooth(self.observations, self.kernel, *self.band_options, boundary = boundary)/self.scale
         self.hat_q = self.scale*q_smooth(self.observations, self.kernel, *self.band_options, 
-                                         is_sorted = True, reflect = reflect)
+                                         is_sorted = True, boundary = boundary)
         
         self.hat_v = v_smooth(self.hat_Q, self.hat_q, self.A_4)
         
@@ -160,11 +158,27 @@ class Model:
         make_ci_asy(self, confidence, hyp)
     
     def make_cicb(self, confidence, draws = 10000, hyp = 'twosided'):
-        make_cicb(self, confidence, draws, hyp)
+        make_cicb(self, confidence, draws, hyp, boundary = self.boundary)
         
     def find_optimal_u(self):
         self.opt_u = self.data._u[self.data._hat_rev.idxmax()]
         print('optimal exclusion:', np.round(self.opt_u,5))
+        
+    def find_expected_fitted(self):
+        self.expfit = np.mean(self.data._fitted)
+        print('expected fitted value:', np.round(self.expfit, 2))
+        
+    def plot_bidders(self, ax):
+        plot_bidders(self, ax)
+        
+    def plot_bid_residuals(self, ax):
+        plot_bid_residuals(self, ax)
+        
+    def plot_ci(self, ax):
+        plot_ci(self, ax)
+        
+    def plot_cb(self, ax):
+        plot_cb(self, ax)
         
         
         

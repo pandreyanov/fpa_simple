@@ -53,7 +53,9 @@ class Simulator:
         self.part_options = calibrate_part(self, self.u_grid, self.frec)
         self.M, self.A_1, self.A_2, self.A_3, self.A_4, self.a = self.part_options
         
-    def simulate(self):
+    def simulate(self, version):
+        
+        self.version = version
         
         trim = self.trim
         draws = self.draws
@@ -70,6 +72,8 @@ class Simulator:
         # eraze boundary
         true_Q[-self.trim:] = 0
         true_q[-self.trim:] = 0
+        true_Q[:self.trim] = 0
+        true_q[:self.trim] = 0
         
         def one_mc(i):
             np.random.seed(i)
@@ -85,6 +89,11 @@ class Simulator:
             q_uni[-self.trim:] = 0
             Q_dgp[-self.trim:] = 0
             q_dgp[-self.trim:] = 0
+            
+            Q_uni[:self.trim] = 0
+            q_uni[:self.trim] = 0
+            Q_dgp[:self.trim] = 0
+            q_dgp[:self.trim] = 0
 
             return [Q_uni, q_uni, Q_dgp, q_dgp]
         
@@ -114,39 +123,14 @@ class Simulator:
         psi = d_numba(A_2)
         chi = psi - d_numba(A_4*psi)
         
-        stats_dgp = np.zeros(shape = (draws, 5), dtype = np.float)
-        
-        @nb.jit(nopython = True, parallel = True)
-        def simulate_all_dgp(stats_dgp):
-            for i in nb.prange(draws):
-                delta_Q = all_Q_dgp[i]-true_Q
-                delta_q = all_q_dgp[i]-true_q
+        if version in [1,2]:
+            stats_dgp = np.zeros(shape = (draws, 5), dtype = np.float)
 
-                delta_v = delta_Q + A_4*delta_q
-                delta_ts = int_lowbound_numba(delta_v*d_numba(A_2))
-                delta_bs = a*int_lowbound_numba(A_3*d_numba(delta_v))
-                delta_rev = delta_ts - M*delta_bs
-
-                # this is a better way
-                delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
-
-                stats_dgp[i,0] = np.max(np.abs(delta_q)[trim:-trim])
-                stats_dgp[i,1] = np.max(np.abs(delta_v)[trim:-trim])
-                stats_dgp[i,2] = np.max(np.abs(delta_bs)[trim:-trim])
-                stats_dgp[i,3] = np.max(np.abs(delta_rev)[trim:-trim])
-                stats_dgp[i,4] = np.max(np.abs(delta_ts)[trim:-trim])
-                
-        simulate_all_dgp(stats_dgp)
-        self.stats_dgp = stats_dgp
-        
-        stats_uni = np.zeros(shape = (draws, draws, 5), dtype = np.float)
-
-        @nb.jit(nopython = True, parallel = True)
-        def simulate_all_uni(stats_uni):
-            for i in nb.prange(draws):
-                for j in nb.prange(draws):
-                    delta_Q = (all_Q_uni[j]-u_grid)*all_q_dgp[i]
-                    delta_q = (all_q_uni[j]-1)*all_q_dgp[i]
+            @nb.jit(nopython = True, parallel = True)
+            def simulate_all_dgp(stats_dgp):
+                for i in nb.prange(draws):
+                    delta_Q = all_Q_dgp[i]-true_Q
+                    delta_q = all_q_dgp[i]-true_q
 
                     delta_v = delta_Q + A_4*delta_q
                     delta_ts = int_lowbound_numba(delta_v*d_numba(A_2))
@@ -156,109 +140,23 @@ class Simulator:
                     # this is a better way
                     delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
 
-                    stats_uni[i,j,0] = np.max(np.abs(delta_q)[trim:-trim])
-                    stats_uni[i,j,1] = np.max(np.abs(delta_v)[trim:-trim])
-                    stats_uni[i,j,2] = np.max(np.abs(delta_bs)[trim:-trim])
-                    stats_uni[i,j,3] = np.max(np.abs(delta_rev)[trim:-trim])
-                    stats_uni[i,j,4] = np.max(np.abs(delta_ts)[trim:-trim])
-                    
-        simulate_all_uni(stats_uni)
-        self.stats_uni = stats_uni
-        
-    def simulate_other(self):
-        
-        trim = self.trim
-        draws = self.draws
-        M = self.M
-        A_2 = self.A_2
-        A_3 = self.A_3
-        A_4 = self.A_4
-        a = self.a
-        u_grid = self.u_grid
-        
-        true_Q = self.Q_fun(self.u_grid)
-        true_q = self.q_fun(self.u_grid)
-        
-        # eraze boundary
-        true_Q[-self.trim:] = 0
-        true_q[-self.trim:] = 0
-        
-        def one_mc(i):
-            np.random.seed(i)
+                    stats_dgp[i,0] = np.max(np.abs(delta_q)[trim:-trim])
+                    stats_dgp[i,1] = np.max(np.abs(delta_v)[trim:-trim])
+                    stats_dgp[i,2] = np.max(np.abs(delta_bs)[trim:-trim])
+                    stats_dgp[i,3] = np.max(np.abs(delta_rev)[trim:-trim])
+                    stats_dgp[i,4] = np.max(np.abs(delta_ts)[trim:-trim])
 
-            Q_uni = np.sort(np.random.uniform(0, 1, self.sample_size))
-            Q_dgp = self.Q_fun(Q_uni)
+            simulate_all_dgp(stats_dgp)
+            self.stats_dgp = stats_dgp
+            
+        if version in [3,4]:
+            stats_dgp = np.zeros(shape = (draws, 5), dtype = np.float)
 
-            q_uni = q_smooth(Q_uni, self.kernel, *self.band_options, is_sorted = True, boundary = self.boundary)
-            q_dgp = q_smooth(Q_dgp, self.kernel, *self.band_options, is_sorted = True, boundary = self.boundary)
-
-            # eraze boundary
-            Q_uni[-self.trim:] = 0
-            q_uni[-self.trim:] = 0
-            Q_dgp[-self.trim:] = 0
-            q_dgp[-self.trim:] = 0
-
-            return [Q_uni, q_uni, Q_dgp, q_dgp]
-        
-        p = Pool(os.cpu_count())
-        all_mc = np.array(p.map(one_mc, range(self.draws)))
-        p.close()
-        p.join()
-        
-        all_Q_uni  = all_mc[:,0,:].copy()
-        all_q_uni  = all_mc[:,1,:].copy()
-
-        all_Q_dgp  = all_mc[:,2,:].copy()
-        all_q_dgp  = all_mc[:,3,:].copy()
-
-        del(all_mc)
-        
-        @nb.jit(nopython = True)
-        def d_numba(arr):
-            diff = arr - np.roll(arr, 1)
-            diff[0] = diff[1]
-            return diff*len(diff)
-
-        @nb.jit(nopython = True)
-        def int_lowbound_numba(arr):
-            return np.flip(np.cumsum(np.flip(arr)))/len(arr)
-        
-        psi = d_numba(A_2)
-        chi = psi - d_numba(A_4*psi)
-        
-        stats_dgp = np.zeros(shape = (draws, 5), dtype = np.float)
-        
-        @nb.jit(nopython = True, parallel = True)
-        def simulate_all_dgp(stats_dgp):
-            for i in nb.prange(draws):
-                delta_Q = all_Q_dgp[i]-true_Q
-                delta_q = all_q_dgp[i]-true_q
-
-                delta_v = delta_Q + A_4*delta_q
-                delta_ts = int_lowbound_numba(delta_v*d_numba(A_2))
-                delta_bs = a*int_lowbound_numba(A_3*d_numba(delta_v))
-                delta_rev = delta_ts - M*delta_bs
-
-                # this is a better way
-                delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
-
-                stats_dgp[i,0] = np.max(np.abs(delta_q)[trim:-trim])
-                stats_dgp[i,1] = np.max(np.abs(delta_v)[trim:-trim])
-                stats_dgp[i,2] = np.max(np.abs(delta_bs)[trim:-trim])
-                stats_dgp[i,3] = np.max(np.abs(delta_rev)[trim:-trim])
-                stats_dgp[i,4] = np.max(np.abs(delta_ts)[trim:-trim])
-                
-        simulate_all_dgp(stats_dgp)
-        self.stats_dgp = stats_dgp
-        
-        stats_uni = np.zeros(shape = (draws, draws, 5), dtype = np.float)
-
-        @nb.jit(nopython = True, parallel = True)
-        def simulate_all_uni(stats_uni):
-            for i in nb.prange(draws):
-                for j in nb.prange(draws):
-                    delta_Q = (all_Q_uni[j]-u_grid)*all_q_dgp[i]
-                    delta_q = (all_q_uni[j]-1)*all_q_dgp[i]
+            @nb.jit(nopython = True, parallel = True)
+            def simulate_all_dgp(stats_dgp):
+                for i in nb.prange(draws):
+                    delta_Q = all_Q_dgp[i]-true_Q
+                    delta_q = all_q_dgp[i]-true_q
 
                     delta_v = delta_Q + A_4*delta_q
                     delta_ts = int_lowbound_numba(delta_v*d_numba(A_2))
@@ -268,17 +166,121 @@ class Simulator:
                     # this is a better way
                     delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
 
-                    stats_uni[i,j,0] = np.max(np.abs(delta_q)[trim:-trim])
-                    stats_uni[i,j,1] = np.max(np.abs(delta_v)[trim:-trim])
-                    stats_uni[i,j,2] = np.max(np.abs(delta_bs)[trim:-trim])
-                    stats_uni[i,j,3] = np.max(np.abs(delta_rev)[trim:-trim])
-                    stats_uni[i,j,4] = np.max(np.abs(delta_ts)[trim:-trim])
-                    
-        simulate_all_uni(stats_uni)
-        self.stats_uni = stats_uni
+                    stats_dgp[i,0] = np.max(np.abs(delta_q/all_q_dgp[i])[trim:-trim])
+                    stats_dgp[i,1] = np.max(np.abs(delta_v/all_q_dgp[i])[trim:-trim])
+                    stats_dgp[i,2] = np.max(np.abs(delta_bs/all_q_dgp[i])[trim:-trim])
+                    stats_dgp[i,3] = np.max(np.abs(delta_rev/all_q_dgp[i])[trim:-trim])
+                    stats_dgp[i,4] = np.max(np.abs(delta_ts)[trim:-trim])
+
+            simulate_all_dgp(stats_dgp)
+            self.stats_dgp = stats_dgp
         
+        if version == 1:
+            stats_uni = np.zeros(shape = (draws, draws, 5), dtype = np.float)
+
+            @nb.jit(nopython = True, parallel = True)
+            def simulate_all_uni(stats_uni):
+                for i in nb.prange(draws):
+                    for j in nb.prange(draws):
+                        delta_Q = (all_Q_uni[j]-u_grid)*all_q_dgp[i]
+                        delta_q = (all_q_uni[j]-1)*all_q_dgp[i]
+
+                        delta_v = delta_Q + A_4*delta_q
+                        delta_ts = int_lowbound_numba(delta_v*d_numba(A_2))
+                        delta_bs = a*int_lowbound_numba(A_3*d_numba(delta_v))
+                        delta_rev = delta_ts - M*delta_bs
+
+                        # this is a better way
+                        delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
+
+                        stats_uni[i,j,0] = np.max(np.abs(delta_q)[trim:-trim])
+                        stats_uni[i,j,1] = np.max(np.abs(delta_v)[trim:-trim])
+                        stats_uni[i,j,2] = np.max(np.abs(delta_bs)[trim:-trim])
+                        stats_uni[i,j,3] = np.max(np.abs(delta_rev)[trim:-trim])
+                        stats_uni[i,j,4] = np.max(np.abs(delta_ts)[trim:-trim])
+
+            simulate_all_uni(stats_uni)
+            self.stats_uni = stats_uni
+            
+        if version == 2:
+            stats_uni = np.zeros(shape = (draws, draws, 5), dtype = np.float)
+
+            @nb.jit(nopython = True, parallel = True)
+            def simulate_all_uni(stats_uni):
+                for i in nb.prange(draws):
+                    for j in nb.prange(draws):
+                        delta_Q = (all_Q_uni[j]-u_grid)*all_q_dgp[i]
+                        delta_q = (all_q_uni[j]-1)*all_q_dgp[i]
+
+                        # this is a better way
+                        delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
+                        
+                        stats_uni[i,j,0] = np.max(np.abs(delta_q)[trim:-trim])
+                        stats_uni[i,j,1] = np.max(np.abs(delta_q*A_4)[trim:-trim])
+                        stats_uni[i,j,2] = np.max(np.abs(delta_q*A_4*A_3*a)[trim:-trim])
+                        stats_uni[i,j,3] = np.max(np.abs(delta_q*A_4*A_3*a*M)[trim:-trim])
+                        stats_uni[i,j,4] = np.max(np.abs(delta_ts)[trim:-trim])
+
+            simulate_all_uni(stats_uni)
+            self.stats_uni = stats_uni
+            
+        if version == 3:
+            stats_uni = np.zeros(shape = (draws, draws, 5), dtype = np.float)
+
+            @nb.jit(nopython = True, parallel = True)
+            def simulate_all_uni(stats_uni):
+                for i in nb.prange(draws):
+                    for j in nb.prange(draws):
+                        delta_Q = (all_Q_uni[j]-u_grid)*all_q_dgp[i]
+                        delta_q = (all_q_uni[j]-1)*all_q_dgp[i]
+
+                        delta_v = delta_Q + A_4*delta_q
+                        delta_ts = int_lowbound_numba(delta_v*d_numba(A_2))
+                        delta_bs = a*int_lowbound_numba(A_3*d_numba(delta_v))
+                        delta_rev = delta_ts - M*delta_bs
+
+                        # this is a better way
+                        delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
+
+                        stats_uni[i,j,0] = np.max(np.abs(delta_q/all_q_dgp[i])[trim:-trim])
+                        stats_uni[i,j,1] = np.max(np.abs(delta_v/all_q_dgp[i])[trim:-trim])
+                        stats_uni[i,j,2] = np.max(np.abs(delta_bs/all_q_dgp[i])[trim:-trim])
+                        stats_uni[i,j,3] = np.max(np.abs(delta_rev/all_q_dgp[i])[trim:-trim])
+                        stats_uni[i,j,4] = np.max(np.abs(delta_ts)[trim:-trim])
+
+            simulate_all_uni(stats_uni)
+            self.stats_uni = stats_uni
+            
+        if version == 4:
+            stats_uni = np.zeros(shape = (draws, draws, 5), dtype = np.float)
+
+            @nb.jit(nopython = True, parallel = True)
+            def simulate_all_uni(stats_uni):
+                for i in nb.prange(draws):
+                    for j in nb.prange(draws):
+                        delta_Q = (all_Q_uni[j]-u_grid)*all_q_dgp[i]
+                        delta_q = all_q_uni[j]-1
+
+                        # this is a better way
+                        delta_ts = A_4[-1]*psi[-1]*delta_Q[-1]-A_4*psi*delta_Q + int_lowbound_numba(chi*delta_Q)
+                        
+                        stats_uni[i,j,0] = np.max(np.abs(delta_q)[trim:-trim])
+                        stats_uni[i,j,1] = np.max(np.abs(delta_q*A_4)[trim:-trim])
+                        stats_uni[i,j,2] = np.max(np.abs(delta_q*A_4*A_3*a)[trim:-trim])
+                        stats_uni[i,j,3] = np.max(np.abs(delta_q*A_4*A_3*a*M)[trim:-trim])
+                        stats_uni[i,j,4] = np.max(np.abs(delta_ts)[trim:-trim])
+
+            simulate_all_uni(stats_uni)
+            self.stats_uni = stats_uni
+      
+    #########
+    ### coverage
+    #########
+    
     def get_coverage(self, nominal_coverage, digits):
         crit_uni = np.percentile(self.stats_uni.reshape(self.draws, self.draws, 5), nominal_coverage, axis = 1)
-        return {i:np.round((np.mean(np.sign(crit_uni[:,j]-self.stats_dgp[:,j]))+1)/2, digits) for i,j in zip(['q','v','bs','rev','ts'],range(5))}
+        return {i:np.round((np.mean(np.sign(crit_uni[:,j]-self.stats_dgp[:,j]))+1)/2, digits) for i,j in zip(['q','v','bs','rev','ts'], range(5))}
+        
+
         
         

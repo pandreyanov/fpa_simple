@@ -107,4 +107,4 @@ The counterfactuals are populated into the original dataset, ordered by the magn
 - *q_ci*, *v_ci*, *_bs_ci*, *_ts_ci*, *_rev_ci* : simulated confidence intervals
 - *q_cb*, *v_cb*, *_bs_cb*, *_ts_cb*, *_rev_cb* : simulated confidence bands
 
-- *q_cb_asy*, *v_cb_asy*, *_bs_cb_asy*, *_rev_cb_asy* : asymptotic (theoretical) confidence intervals
+- *q_ci_asy*, *v_ci_asy*, *_bs_ci_asy*, *_rev_ci_asy* : asymptotic (theoretical) confidence intervals

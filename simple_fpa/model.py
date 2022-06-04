@@ -160,9 +160,6 @@ class Model:
     def make_cicb(self, confidence, draws = 10000, hyp = 'twosided'):
         make_cicb(self, confidence, draws, hyp, boundary = self.boundary)
         
-    def make_cicb_other(self, confidence, draws = 10000, hyp = 'twosided'):
-        make_cicb_other(self, confidence, draws, hyp, boundary = self.boundary)
-        
     def find_optimal_u(self):
         self.opt_u = self.data._u[self.data._hat_rev.idxmax()]
         print('optimal exclusion:', np.round(self.opt_u,5))

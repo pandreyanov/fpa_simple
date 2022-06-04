@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.signal import fftconvolve
 
-def q_smooth(sorted_bids, kernel, sample_size, band, i_band, trim, is_sorted = False, reflect = True, paste_ends = False):
+def q_smooth(sorted_bids, kernel, sample_size, band, i_band, trim, is_sorted = False, boundary = 'reflect'):
     
     if is_sorted == False:
         sorted_bids = np.sort(sorted_bids)
@@ -9,34 +9,50 @@ def q_smooth(sorted_bids, kernel, sample_size, band, i_band, trim, is_sorted = F
     spacings = sorted_bids - np.roll(sorted_bids,1)
     spacings[0] = 0
     
-    if reflect == False:
+    if boundary == 'mean':
         mean = spacings.mean()
         out = (fftconvolve(spacings-mean, kernel, mode = 'same') + mean)*sample_size
     
-    if reflect == True:
+    if boundary == 'reflect':
         reflected = np.concatenate((np.flip(spacings[:trim]), spacings, np.flip(spacings[-trim:])))
         out = fftconvolve(reflected, kernel, mode = 'same')[trim:-trim]*sample_size
     
-    if paste_ends == True:
+    if boundary == 'constant':
+        out = fftconvolve(spacings, kernel, mode = 'same')*sample_size
         out[:trim] = out[trim]
         out[-trim:] = out[-trim]
+        
+    if boundary == 'zero':
+        out = fftconvolve(spacings, kernel, mode = 'same')*sample_size
+        out[:trim] = 0
+        out[:trim] = 0
+        out[-trim:] = 0
+        out[-trim:] = 0
     
     return out
 
-def f_smooth(bids, kernel, sample_size, band, i_band, trim, paste_ends = False, reflect = False):
+def f_smooth(bids, kernel, sample_size, band, i_band, trim, paste_ends = False, boundary = 'reflect'):
     histogram, _ = np.histogram(bids, sample_size, range = (0,1))
     
-    if reflect == False:
+    if boundary == 'mean':
         mean = histogram.mean()
-        out = fftconvolve(histogram - mean, kernel, mode = 'same') + mean
-        
-    if reflect == True:
+        out = (fftconvolve(histogram-mean, kernel, mode = 'same') + mean)
+    
+    if boundary == 'reflect':
         reflected = np.concatenate((np.flip(histogram[:trim]), histogram, np.flip(histogram[-trim:])))
         out = fftconvolve(reflected, kernel, mode = 'same')[trim:-trim]
     
-    if paste_ends == True:
+    if boundary == 'constant':
+        out = fftconvolve(histogram, kernel, mode = 'same')
         out[:trim] = out[trim]
         out[-trim:] = out[-trim]
+        
+    if boundary == 'zero':
+        out = fftconvolve(histogram, kernel, mode = 'same')
+        out[:trim] = 0
+        out[:trim] = 0
+        out[-trim:] = 0
+        out[-trim:] = 0
     
     return out
 
