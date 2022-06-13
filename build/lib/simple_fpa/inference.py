@@ -8,7 +8,7 @@ from .estimators import *
 
 def add_column(self, name, values):
     self.data[name] = np.nan
-    self.data.loc[self.active_index,name] = values
+    self.data.loc[self.active_index, name] = values
     
 def make_ci_asy(self, confidence, hyp):
     
@@ -70,7 +70,7 @@ def make_cicb(self, confidence, draws, hyp, boundary):
         def _perc(x):
             return np.percentile(x, confidence, axis = 0)
         
-    delta_ts = np.apply_along_axis(lambda x: total_surplus_from_Q(x, *self.part_options), 1, delta_Qs)
+    delta_ts = np.apply_along_axis(lambda x: total_surplus_from_Q(x, self.trim, *self.part_options), 1, delta_Qs)
     del(delta_Qs)
        
     add_column(self, '_ts_ci', _perc(delta_ts))
@@ -89,5 +89,6 @@ def make_cicb(self, confidence, draws, hyp, boundary):
     add_column(self, '_bs_ci', self.a*self.A_3*self.A_4*core_ci)
     add_column(self, '_bs_cb', self.a*self.A_3*self.A_4*core_cb)
     
+    self.rev_cb = self.M*self.a*self.A_3*self.A_4*core_cb
     add_column(self, '_rev_ci', self.M*self.a*self.A_3*self.A_4*core_ci)
-    add_column(self, '_rev_cb', self.M*self.a*self.A_3*self.A_4*core_cb)
+    add_column(self, '_rev_cb', self.rev_cb)

@@ -113,34 +113,41 @@ class Model:
         
         self.hat_v = v_smooth(self.hat_Q, self.hat_q, self.A_4)
         
+        if boundary == 'zero':
+            self.hat_Q[:self.trim] = 0
+            self.hat_q[:self.trim] = 0
+            self.hat_v[:self.trim] = 0
+            self.hat_Q[-self.trim:] = 0
+            self.hat_q[-self.trim:] = 0
+            self.hat_v[-self.trim:] = 0
+        
+        self.hat_v_rea = self.hat_v.copy()
+        self.hat_v_rea[self.trim:-self.trim] = np.sort(self.hat_v_rea[self.trim:-self.trim])
+        
         self.ts = total_surplus(self.hat_v, *self.part_options)
-        self.ts2 = total_surplus_from_Q(self.hat_Q, *self.part_options)
+        self.ts2 = total_surplus_from_Q(self.hat_Q, self.trim, *self.part_options)
         
         self.bs = bidder_surplus(self.hat_v, *self.part_options)
         self.rev = revenue(self.hat_v, *self.part_options)
+        self.rev2 = revenue_from_Q_and_v(self.hat_Q, self.hat_v, self.trim, *self.part_options)
+        self.rev_rea = revenue_from_Q_and_v(self.hat_Q, self.hat_v_rea, self.trim, *self.part_options)
+        
+    def add_column(self, name, values):
+        self.data[name] = np.nan
+        self.data.loc[self.active_index, name] = values
         
     def predict(self):
         self.active_index = self.data._trimmed.isin([0])
         
-        self.data['_u'] = np.nan
-        self.data.loc[self.active_index,'_u'] = self.u_grid
-        
-        self.data['_hat_q'] = np.nan
-        self.data.loc[self.active_index,'_hat_q'] = self.hat_q
-        
-        self.data['_hat_v'] = np.nan
-        self.data['_latent_resid'] = np.nan
-        self.data.loc[self.active_index,'_hat_v'] = self.hat_v
-        self.data.loc[self.active_index,'_latent_resid'] = self.hat_v
-        
-        self.data['_hat_ts'] = np.nan
-        self.data.loc[self.active_index,'_hat_ts'] = self.ts
-        
-        self.data['_hat_bs'] = np.nan
-        self.data.loc[self.active_index,'_hat_bs'] = self.bs
-        
-        self.data['_hat_rev'] = np.nan
-        self.data.loc[self.active_index,'_hat_rev'] = self.rev
+        self.add_column('_u', self.u_grid)
+        self.add_column('_hat_q', self.hat_q)
+        self.add_column('_hat_v', self.hat_v)
+        self.add_column('_hat_v_rea', self.hat_v_rea)
+        self.add_column('_latent_resid', self.hat_v)
+        self.add_column('_hat_ts', self.ts)
+        self.add_column('_hat_bs', self.bs)
+        self.add_column('_hat_rev', self.rev)
+        self.add_column('_hat_rev_rea', self.rev_rea)
         
         self.data['_latent_'+self.bid_column] = np.nan
         if self.model_type == 'multiplicative':
