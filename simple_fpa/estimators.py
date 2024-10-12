@@ -70,28 +70,29 @@ def int_lowbound(arr):
 def int_uppbound(arr):
     return np.cumsum(arr)/len(arr)
 
-def total_surplus(v, M, A_1, A_2, A_3, A_4, a):
+def total_surplus(v, Mtilde, A_1, A_2, A_3, A_4):
     return int_lowbound(v*d(A_2))
 
-def bidder_surplus(v, M, A_1, A_2, A_3, A_4, a):
-    return a*int_lowbound(A_3*d(v))
+def bidder_surplus(v, Mtilde, A_1, A_2, A_3, A_4):
+    return int_lowbound(A_3*d(v))
 
-def revenue(v, M, A_1, A_2, A_3, A_4, a):
-    return total_surplus(v, M, A_1, A_2, A_3, A_4, a) - M*bidder_surplus(v, M, A_1, A_2, A_3, A_4, a)
+def revenue(v, Mtilde, A_1, A_2, A_3, A_4):
+    return total_surplus(v, Mtilde, A_1, A_2, A_3, A_4) - Mtilde*bidder_surplus(v, Mtilde, A_1, A_2, A_3, A_4)
 
-def total_surplus_from_Q(Q, trim, M, A_1, A_2, A_3, A_4, a):
+def total_surplus_from_Q(Q, trim, Mtilde, A_1, A_2, A_3, A_4):
     psi = d(A_2)
     chi = psi - d(A_4*psi)
     return A_4[-trim-1]*psi[-trim-1]*Q[-trim-1] - A_4*psi*Q + int_lowbound(chi*Q)
 
-def revenue_from_Q_and_v(Q, v, trim, M, A_1, A_2, A_3, A_4, a):
-    phi = M*a*A_3
-    psi = d(A_2 + M*a*A_3)
+def revenue_from_Q_and_v(Q, v, trim, Mtilde, A_1, A_2, A_3, A_4):
+    phi = Mtilde*A_3
+    psi = d(A_2 + Mtilde*A_3)
     chi = psi - d(A_4*psi)
     return phi*v + A_4[-trim-1]*psi[-trim-1]*Q[-trim-1] - A_4*psi*Q + int_lowbound(chi*Q)
 
-def bidder_surplus_from_Q_and_v(Q, v, trim, M, A_1, A_2, A_3, A_4, a):
-    phi = -a*A_3
-    psi = -d(a*A_3)
-    chi = psi - d(A_4*psi)
-    return phi*v + A_4[-trim-1]*psi[-trim-1]*Q[-trim-1] - A_4*psi*Q + int_lowbound(chi*Q)
+# need to fix this aftert he introduction of Mtilde (Mtilde = a M)
+# def bidder_surplus_from_Q_and_v(Q, v, trim, M, A_1, A_2, A_3, A_4, a):
+#     phi = -a*A_3
+#     psi = -d(a*A_3)
+#     chi = psi - d(A_4*psi)
+#     return phi*v + A_4[-trim-1]*psi[-trim-1]*Q[-trim-1] - A_4*psi*Q + int_lowbound(chi*Q)

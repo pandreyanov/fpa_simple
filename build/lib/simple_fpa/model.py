@@ -30,7 +30,7 @@ class Model:
         self.data.sort_values(by = self.auctionid_columns, inplace = True)
         
         self.data['__ones'] = 1
-        self.data['_bidders'] = self.data.groupby(by = self.auctionid_columns)['__ones'].transform(sum)
+        self.data['_bidders'] = self.data.groupby(by = self.auctionid_columns)['__ones'].transform('sum')
         self.data.drop(columns = ['__ones'], inplace = True)
         
         frec = self.data.groupby(by = 'auctionid')._bidders.first().value_counts().values
@@ -103,7 +103,7 @@ class Model:
         self.kernel, self.intKsq = make_kernel(self.u_grid, self.i_band, kernel = tri)
         
         self.part_options = calibrate_part(self, self.u_grid, self.frec)
-        self.M, self.A_1, self.A_2, self.A_3, self.A_4, self.a = self.part_options
+        self.Mtilde, self.A_1, self.A_2, self.A_3, self.A_4 = self.part_options
          
         self.hat_Q = self.intercept + self.scale*self.observations # they are sorted with the dataset
         

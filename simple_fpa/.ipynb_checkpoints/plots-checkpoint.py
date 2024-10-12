@@ -11,10 +11,10 @@ def plot_ci(self, ax):
     ax.plot(self.data._u, self.data._hat_ts + self.data._ts_ci, color = 'green', linestyle = '--',linewidth = .7)
     ax.plot(self.data._u, self.data._hat_ts - self.data._ts_ci, color = 'green', linestyle = '--',linewidth = .7)
     
-    ax.plot(self.data._u, self.M*self.data._hat_bs, label = 'M*bs', color = 'red', linewidth=1)
-    ax.plot(self.data._u, self.M*(self.data._bs_ci+self.data._hat_bs), 
+    ax.plot(self.data._u, self.Mtilde*self.data._hat_bs, label = 'Mtilde*bs', color = 'red', linewidth=1)
+    ax.plot(self.data._u, self.Mtilde*(self.data._bs_ci+self.data._hat_bs), 
             color = 'red', linestyle = '--', linewidth = .7)
-    ax.plot(self.data._u, self.M*(-self.data._bs_ci+self.data._hat_bs), 
+    ax.plot(self.data._u, self.Mtilde*(-self.data._bs_ci+self.data._hat_bs), 
             color = 'red', linestyle = '--', linewidth = .7)
     
     ax.plot(self.data._u, self.data._hat_rev, label = 'rev', color = 'blue')
@@ -23,7 +23,7 @@ def plot_ci(self, ax):
     ax.plot(self.data._u, -self.data._rev_ci + self.data._hat_rev, 
             color = 'blue', linestyle = '--',linewidth = .7)
     
-    ax.axvline(self.opt_u, linewidth = .7, color = 'black', label = 'optimal exclusion', linestyle = 'dotted')
+    ax.axvline(self.opt_u, linewidth = .7, color = 'black', label = 'opt. excl.', linestyle = 'dotted')
     
     ax.legend(loc = 'upper right')
     ax.set_xlabel('confidence intervals')
@@ -34,15 +34,19 @@ def plot_cb(self, ax):
     ax.plot(self.data._u, self.data._hat_ts + self.data._ts_cb, color = 'green', linestyle = '--',linewidth = .7)
     ax.plot(self.data._u, self.data._hat_ts - self.data._ts_cb, color = 'green', linestyle = '--',linewidth = .7)
     
-    ax.plot(self.data._u, self.M*self.data._hat_bs, color = 'red', linewidth=1)
-    ax.plot(self.data._u, self.M*(self.data._bs_cb+self.data._hat_bs), 
+    ax.plot(self.data._u, self.Mtilde*self.data._hat_bs, color = 'red', linewidth=1)
+    
+    ax.plot(self.data._u, self.Mtilde*(self.data._bs_cb+self.data._hat_bs), 
             color = 'red', linestyle = '--',linewidth = .7)
-    ax.plot(self.data._u, self.M*(-self.data._bs_cb+self.data._hat_bs), 
+    
+    ax.plot(self.data._u, self.Mtilde*(-self.data._bs_cb+self.data._hat_bs), 
             color = 'red', linestyle = '--',linewidth = .7)
     
     ax.plot(self.data._u, self.data._hat_rev, color = 'blue')
+    
     ax.plot(self.data._u, self.data._rev_cb + self.data._hat_rev, 
             color = 'blue', linestyle = '--',linewidth = .7)
+    
     ax.plot(self.data._u, -self.data._rev_cb + self.data._hat_rev, 
             color = 'blue', linestyle = '--',linewidth = .7)
     
@@ -124,8 +128,9 @@ def plot_densities(self, ax):
     ax.legend()
     
 def plot_quantiles(self, ax):
-    
-    avg_fitted = 1 #self.data._fitted.mean()
+
+    # wht was it set to 1 before?
+    avg_fitted = self.data._fitted.mean()
 
     if self.model_type == 'multiplicative':
         b_qf = self.hat_Q * avg_fitted
